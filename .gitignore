@@ -1,0 +1,23 @@
+
+bin/
+*.o
+*.exe
+KinetiX_Server
+KinetiX_Client
+
+data/*.db
+data/*.log
+data/*.csv
+data/*.txt
+
+.vscode/
+.idea/
+
+# Eclipse
+.metadata/
+.project
+.cproject
+.settings/
+
+.cache/
+RemoteSystemsTempFiles/
