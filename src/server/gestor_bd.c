@@ -29,6 +29,10 @@ int insertar_estacion(Estacion nueva_estacion) {
         return SQLITE_MISUSE;
     }
 
+    if (nueva_estacion.capacidad_max <= 0 || nueva_estacion.disponibilidad_actual < 0) {
+        return SQLITE_CONSTRAINT;
+    }
+
     sqlite3_stmt *stmt = NULL;
 
     const char *sql =
@@ -242,7 +246,7 @@ int borrar_estacion(int id_estacion) {
     }
 
     if (filas == 0) {
-        printf("No existe ninguna estación con ese id");
+        printf("No existe ninguna estación con ese id\n");
         return SQLITE_NOTFOUND;
     }
 
@@ -283,7 +287,7 @@ int dar_de_baja_vehiculo(int id_vehiculo) {
     }
 
     if (filas == 0) {
-        printf("No existe ningún vehículo con ese id");
+        printf("No existe ningún vehículo con ese id\n");
         return SQLITE_NOTFOUND;
     }
 
@@ -324,11 +328,162 @@ int dar_de_baja_usuario(int id_usuario) {
     }
 
     if (filas == 0) {
-        printf("No existe ningún usuario con ese id");
+        printf("No existe ningún usuario con ese id\n");
         return SQLITE_NOTFOUND;
     }
 
     printf("Fila borrada correctamente\n");
+
+    return SQLITE_OK;
+}
+
+int actualizar_estacion(Estacion estacion_actualizada) {
+    if (db == NULL) {
+        return SQLITE_MISUSE;
+    }
+
+    if (estacion_actualizada.capacidad_max <= 0 || estacion_actualizada.disponibilidad_actual < 0) {
+        return SQLITE_CONSTRAINT;
+        }
+
+    sqlite3_stmt *stmt = NULL;
+    const char *sql =
+        "UPDATE ESTACION "
+        "SET nombre = ?, direccion = ?, capacidad_max = ?, disponibilidad_actual = ? "
+        "WHERE id_estacion = ?;";
+
+    int result = sqlite3_prepare_v2(db, sql, -1, &stmt, NULL);
+    if (result != SQLITE_OK) {
+        printf("Error preparando la consulta: %s\n", sqlite3_errmsg(db));
+        return result;
+    }
+
+    sqlite3_bind_text(stmt, 1, estacion_actualizada.nombre, -1, SQLITE_TRANSIENT);
+    sqlite3_bind_text(stmt, 2, estacion_actualizada.direccion, -1, SQLITE_TRANSIENT);
+    sqlite3_bind_int(stmt, 3, estacion_actualizada.capacidad_max);
+    sqlite3_bind_int(stmt, 4, estacion_actualizada.disponibilidad_actual);
+    sqlite3_bind_int(stmt, 5, estacion_actualizada.id_estacion);
+
+    result = sqlite3_step(stmt);
+    if (result != SQLITE_DONE) {
+        printf("Error eliminando datos: %s\n", sqlite3_errmsg(db));
+        sqlite3_finalize(stmt);
+        return result;
+    }
+
+    int filas = sqlite3_changes(db);
+
+    result = sqlite3_finalize(stmt);
+    if (result != SQLITE_OK) {
+        printf("Error finalizando statement: %s\n", sqlite3_errmsg(db));
+        return result;
+    }
+
+    if (filas == 0) {
+        printf("No existe ninguna estación con ese id\n");
+        return SQLITE_NOTFOUND;
+    }
+
+    printf("Actualizado correctamente\n");
+
+    return SQLITE_OK;
+}
+
+int actualizar_usuario(Usuario usuario_actualizado) {
+    if (db == NULL) {
+        return SQLITE_MISUSE;
+    }
+
+    sqlite3_stmt *stmt = NULL;
+    const char *sql =
+        "UPDATE USUARIO "
+        "SET dni = ?, nombre = ?, contrasena = ?, saldo = ? "
+        "WHERE id_estacion = ?;";
+
+    int result = sqlite3_prepare_v2(db, sql, -1, &stmt, NULL);
+    if (result != SQLITE_OK) {
+        printf("Error preparando la consulta: %s\n", sqlite3_errmsg(db));
+        return result;
+    }
+
+    sqlite3_bind_int(stmt, 5, usuario_actualizado.id_usuario);
+    sqlite3_bind_text(stmt, 1, usuario_actualizado.dni, -1, SQLITE_TRANSIENT);
+    sqlite3_bind_text(stmt, 2, usuario_actualizado.nombre, -1, SQLITE_TRANSIENT);
+    sqlite3_bind_text(stmt, 3, usuario_actualizado.contrasena, -1, SQLITE_TRANSIENT);
+    sqlite3_bind_double(stmt, 4, usuario_actualizado.saldo);
+
+    result = sqlite3_step(stmt);
+    if (result != SQLITE_DONE) {
+        printf("Error eliminando datos: %s\n", sqlite3_errmsg(db));
+        sqlite3_finalize(stmt);
+        return result;
+    }
+
+    int filas = sqlite3_changes(db);
+
+    result = sqlite3_finalize(stmt);
+    if (result != SQLITE_OK) {
+        printf("Error finalizando statement: %s\n", sqlite3_errmsg(db));
+        return result;
+    }
+
+    if (filas == 0) {
+        printf("No existe ningún usuario con ese id\n");
+        return SQLITE_NOTFOUND;
+    }
+
+    printf("Actualizado correctamente\n");
+
+    return SQLITE_OK;
+}
+
+int actualizar_vehiculo(Vehiculo vehiculo_actualizado) {
+    if (db == NULL) {
+        return SQLITE_MISUSE;
+    }
+
+    sqlite3_stmt *stmt = NULL;
+    const char *sql =
+        "UPDATE VEHICULO "
+        "SET tipo = ?, bateria = ?, estado = ?, id_estacion = ? "
+        "WHERE id_vehiculo = ?;";
+
+    int result = sqlite3_prepare_v2(db, sql, -1, &stmt, NULL);
+    if (result != SQLITE_OK) {
+        printf("Error preparando la consulta: %s\n", sqlite3_errmsg(db));
+        return result;
+    }
+
+    char tipo_str[2] = { vehiculo_actualizado.tipo, '\0' };
+    char estado_str[2] = { vehiculo_actualizado.estado, '\0' };
+
+    sqlite3_bind_int(stmt, 5, vehiculo_actualizado.id_vehiculo);
+    sqlite3_bind_text(stmt, 1, tipo_str, -1, SQLITE_TRANSIENT);
+    sqlite3_bind_double(stmt, 2, (double)vehiculo_actualizado.bateria);
+    sqlite3_bind_text(stmt, 3, estado_str, -1, SQLITE_TRANSIENT);
+    sqlite3_bind_int(stmt, 4, vehiculo_actualizado.id_estacion);
+
+    result = sqlite3_step(stmt);
+    if (result != SQLITE_DONE) {
+        printf("Error eliminando datos: %s\n", sqlite3_errmsg(db));
+        sqlite3_finalize(stmt);
+        return result;
+    }
+
+    int filas = sqlite3_changes(db);
+
+    result = sqlite3_finalize(stmt);
+    if (result != SQLITE_OK) {
+        printf("Error finalizando statement: %s\n", sqlite3_errmsg(db));
+        return result;
+    }
+
+    if (filas == 0) {
+        printf("No existe ningún usuario con ese id\n");
+        return SQLITE_NOTFOUND;
+    }
+
+    printf("Actualizado correctamente\n");
 
     return SQLITE_OK;
 }
