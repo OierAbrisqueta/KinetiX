@@ -209,3 +209,126 @@ int insertar_alquiler(Alquiler nuevo_alquiler) {
 
     return SQLITE_OK;
 }
+
+int borrar_estacion(int id_estacion) {
+    if (db == NULL) {
+        return SQLITE_MISUSE;
+    }
+
+    sqlite3_stmt *stmt = NULL;
+    const char *sql = "DELETE FROM ESTACION WHERE id_estacion = ?;";
+
+    int result = sqlite3_prepare_v2(db, sql, -1, &stmt, NULL);
+    if (result != SQLITE_OK) {
+        printf("Error preparando la consulta: %s\n", sqlite3_errmsg(db));
+        return result;
+    }
+
+    sqlite3_bind_int(stmt, 1, id_estacion);
+
+    result = sqlite3_step(stmt);
+    if (result != SQLITE_DONE) {
+        printf("Error eliminando datos: %s\n", sqlite3_errmsg(db));
+        sqlite3_finalize(stmt);
+        return result;
+    }
+
+    int filas = sqlite3_changes(db);
+
+    result = sqlite3_finalize(stmt);
+    if (result != SQLITE_OK) {
+        printf("Error finalizando statement: %s\n", sqlite3_errmsg(db));
+        return result;
+    }
+
+    if (filas == 0) {
+        printf("No existe ninguna estación con ese id");
+        return SQLITE_NOTFOUND;
+    }
+
+    printf("Fila borrada correctamente\n");
+
+    return SQLITE_OK;
+}
+
+int dar_de_baja_vehiculo(int id_vehiculo) {
+    if (db == NULL) {
+        return SQLITE_MISUSE;
+    }
+
+    sqlite3_stmt *stmt = NULL;
+    const char *sql = "DELETE FROM VEHICULO WHERE id_vehiculo = ?;";
+
+    int result = sqlite3_prepare_v2(db, sql, -1, &stmt, NULL);
+    if (result != SQLITE_OK) {
+        printf("Error preparando la consulta: %s\n", sqlite3_errmsg(db));
+        return result;
+    }
+
+    sqlite3_bind_int(stmt, 1, id_vehiculo);
+
+    result = sqlite3_step(stmt);
+    if (result != SQLITE_DONE) {
+        printf("Error eliminando datos: %s\n", sqlite3_errmsg(db));
+        sqlite3_finalize(stmt);
+        return result;
+    }
+
+    int filas = sqlite3_changes(db);
+
+    result = sqlite3_finalize(stmt);
+    if (result != SQLITE_OK) {
+        printf("Error finalizando statement: %s\n", sqlite3_errmsg(db));
+        return result;
+    }
+
+    if (filas == 0) {
+        printf("No existe ningún vehículo con ese id");
+        return SQLITE_NOTFOUND;
+    }
+
+    printf("Fila borrada correctamente\n");
+
+    return SQLITE_OK;
+}
+
+int dar_de_baja_usuario(int id_usuario) {
+    if (db == NULL) {
+        return SQLITE_MISUSE;
+    }
+
+    sqlite3_stmt *stmt = NULL;
+    const char *sql = "DELETE FROM USUARIO WHERE id_usuario = ?;";
+
+    int result = sqlite3_prepare_v2(db, sql, -1, &stmt, NULL);
+    if (result != SQLITE_OK) {
+        printf("Error preparando la consulta: %s\n", sqlite3_errmsg(db));
+        return result;
+    }
+
+    sqlite3_bind_int(stmt, 1, id_usuario);
+
+    result = sqlite3_step(stmt);
+    if (result != SQLITE_DONE) {
+        printf("Error eliminando datos: %s\n", sqlite3_errmsg(db));
+        sqlite3_finalize(stmt);
+        return result;
+    }
+
+    int filas = sqlite3_changes(db);
+
+    result = sqlite3_finalize(stmt);
+    if (result != SQLITE_OK) {
+        printf("Error finalizando statement: %s\n", sqlite3_errmsg(db));
+        return result;
+    }
+
+    if (filas == 0) {
+        printf("No existe ningún usuario con ese id");
+        return SQLITE_NOTFOUND;
+    }
+
+    printf("Fila borrada correctamente\n");
+
+    return SQLITE_OK;
+}
