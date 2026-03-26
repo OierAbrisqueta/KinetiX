@@ -1,489 +1,547 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include "gestor_bd.h"
 #include "modelos.h"
 
-sqlite3 *db;
+static sqlite3 *db = NULL;
 
-int conectar_bd(const char* ruta_bd) {
-    int result = sqlite3_open("test.sqlite", &db);
+/* ============================================================
+ * CONEXION
+ * ============================================================ */
 
-    if (result != SQLITE_OK) {
-        printf("Error: No se puede abrir la base de datos\n");
-        return result;
-    } else {
-        printf("Se ha establecido la conexión con la base de datos\n");
-        return result;
+int conectar_bd(const char *ruta_bd) {
+    const char *ruta = (ruta_bd && strlen(ruta_bd) > 0)
+                       ? ruta_bd : "data/kinetix.db";
+
+    int rc = sqlite3_open(ruta, &db);
+    if (rc != SQLITE_OK) {
+        printf("[BD] Error: no se puede abrir '%s': %s\n",
+               ruta, sqlite3_errmsg(db));
+        db = NULL;
+        return rc;
     }
-};
+    sqlite3_exec(db, "PRAGMA foreign_keys = ON;", NULL, NULL, NULL);
+    printf("[BD] Conexion establecida con '%s'.\n", ruta);
+    return SQLITE_OK;
+}
 
-void cerrar_bd() {
-    if (db != NULL) {
+void cerrar_bd(void) {
+    if (db) {
         sqlite3_close(db);
-        printf("Conexión con la base de datos cerrada\n");
+        db = NULL;
+        printf("[BD] Conexion cerrada.\n");
     }
 }
 
-int insertar_estacion(Estacion nueva_estacion) {
-    if (db == NULL) {
-        return SQLITE_MISUSE;
-    }
+/* ============================================================
+ * INSERCION
+ * ============================================================ */
 
-    if (nueva_estacion.capacidad_max <= 0 || nueva_estacion.disponibilidad_actual < 0) {
+int insertar_estacion(Estacion e) {
+    if (!db) return SQLITE_MISUSE;
+    if (e.capacidad_max <= 0 || e.disponibilidad_actual < 0)
         return SQLITE_CONSTRAINT;
-    }
 
     sqlite3_stmt *stmt = NULL;
-
     const char *sql =
         "INSERT INTO ESTACION "
         "(id_estacion, nombre, direccion, capacidad_max, disponibilidad_actual) "
         "VALUES (?, ?, ?, ?, ?);";
 
-    int result = sqlite3_prepare_v2(db, sql, -1, &stmt, NULL);
-    if (result != SQLITE_OK) {
-        printf("Error preparando la consulta: %s\n", sqlite3_errmsg(db));
-        return result;
+    int rc = sqlite3_prepare_v2(db, sql, -1, &stmt, NULL);
+    if (rc != SQLITE_OK) {
+        printf("[BD] Error preparando INSERT ESTACION: %s\n", sqlite3_errmsg(db));
+        return rc;
     }
 
-    sqlite3_bind_int(stmt, 1, nueva_estacion.id_estacion);
-    sqlite3_bind_text(stmt, 2, nueva_estacion.nombre, -1, SQLITE_TRANSIENT);
-    sqlite3_bind_text(stmt, 3, nueva_estacion.direccion, -1, SQLITE_TRANSIENT);
-    sqlite3_bind_int(stmt, 4, nueva_estacion.capacidad_max);
-    sqlite3_bind_int(stmt, 5, nueva_estacion.disponibilidad_actual);
+    sqlite3_bind_int (stmt, 1, e.id_estacion);
+    sqlite3_bind_text(stmt, 2, e.nombre,    -1, SQLITE_TRANSIENT);
+    sqlite3_bind_text(stmt, 3, e.direccion, -1, SQLITE_TRANSIENT);
+    sqlite3_bind_int (stmt, 4, e.capacidad_max);
+    sqlite3_bind_int (stmt, 5, e.disponibilidad_actual);
 
-    result = sqlite3_step(stmt);
-    if (result != SQLITE_DONE) {
-        printf("Error insertando datos: %s\n", sqlite3_errmsg(db));
-        sqlite3_finalize(stmt);
-        return result;
+    rc = sqlite3_step(stmt);
+    sqlite3_finalize(stmt);
+
+    if (rc != SQLITE_DONE) {
+        printf("[BD] Error INSERT ESTACION: %s\n", sqlite3_errmsg(db));
+        return rc;
     }
-
-    result = sqlite3_finalize(stmt);
-    if (result != SQLITE_OK) {
-        printf("Error finalizando statement: %s\n", sqlite3_errmsg(db));
-        return result;
-    }
-
-    printf("Se ha insertado correctamente\n");
-
     return SQLITE_OK;
 }
 
-int insertar_vehiculo(Vehiculo nuevo_vehiculo) {
-    if (db == NULL) {
-        return SQLITE_MISUSE;
-    }
+int insertar_vehiculo(Vehiculo v) {
+    if (!db) return SQLITE_MISUSE;
 
     sqlite3_stmt *stmt = NULL;
-
     const char *sql =
         "INSERT INTO VEHICULO "
         "(id_vehiculo, tipo, bateria, estado, id_estacion) "
         "VALUES (?, ?, ?, ?, ?);";
 
-    int result = sqlite3_prepare_v2(db, sql, -1, &stmt, NULL);
-    if (result != SQLITE_OK) {
-        printf("Error preparando la consulta: %s\n", sqlite3_errmsg(db));
-        return result;
+    int rc = sqlite3_prepare_v2(db, sql, -1, &stmt, NULL);
+    if (rc != SQLITE_OK) {
+        printf("[BD] Error preparando INSERT VEHICULO: %s\n", sqlite3_errmsg(db));
+        return rc;
     }
 
-    char tipo_str[2] = { nuevo_vehiculo.tipo, '\0' };
-    char estado_str[2] = { nuevo_vehiculo.estado, '\0' };
+    char tipo_s[2]   = { v.tipo,   '\0' };
+    char estado_s[2] = { v.estado, '\0' };
 
-    sqlite3_bind_int(stmt, 1, nuevo_vehiculo.id_vehiculo);
-    sqlite3_bind_text(stmt, 2, tipo_str, -1, SQLITE_TRANSIENT);
-    sqlite3_bind_double(stmt, 3, (double)nuevo_vehiculo.bateria);
-    sqlite3_bind_text(stmt, 4, estado_str, -1, SQLITE_TRANSIENT);
-    sqlite3_bind_int(stmt, 5, nuevo_vehiculo.id_estacion);
+    sqlite3_bind_int   (stmt, 1, v.id_vehiculo);
+    sqlite3_bind_text  (stmt, 2, tipo_s,   -1, SQLITE_TRANSIENT);
+    sqlite3_bind_double(stmt, 3, (double)v.bateria);
+    sqlite3_bind_text  (stmt, 4, estado_s, -1, SQLITE_TRANSIENT);
 
-    result = sqlite3_step(stmt);
-    if (result != SQLITE_DONE) {
-        printf("Error insertando datos: %s\n", sqlite3_errmsg(db));
-        sqlite3_finalize(stmt);
-        return result;
+    if (v.id_estacion > 0)
+        sqlite3_bind_int(stmt, 5, v.id_estacion);
+    else
+        sqlite3_bind_null(stmt, 5);
+
+    rc = sqlite3_step(stmt);
+    sqlite3_finalize(stmt);
+
+    if (rc != SQLITE_DONE) {
+        printf("[BD] Error INSERT VEHICULO: %s\n", sqlite3_errmsg(db));
+        return rc;
     }
-
-    result = sqlite3_finalize(stmt);
-    if (result != SQLITE_OK) {
-        printf("Error finalizando statement: %s\n", sqlite3_errmsg(db));
-        return result;
-    }
-
-    printf("Se ha insertado correctamente\n");
-
     return SQLITE_OK;
 }
 
-int insertar_usuario(Usuario nuevo_usuario) {
-    if (db == NULL) {
-        return SQLITE_MISUSE;
-    }
+int insertar_usuario(Usuario u) {
+    if (!db) return SQLITE_MISUSE;
 
     sqlite3_stmt *stmt = NULL;
-
     const char *sql =
         "INSERT INTO USUARIO "
         "(id_usuario, dni, nombre, contrasena, saldo) "
         "VALUES (?, ?, ?, ?, ?);";
 
-    int result = sqlite3_prepare_v2(db, sql, -1, &stmt, NULL);
-    if (result != SQLITE_OK) {
-        printf("Error preparando la consulta: %s\n", sqlite3_errmsg(db));
-        return result;
+    int rc = sqlite3_prepare_v2(db, sql, -1, &stmt, NULL);
+    if (rc != SQLITE_OK) {
+        printf("[BD] Error preparando INSERT USUARIO: %s\n", sqlite3_errmsg(db));
+        return rc;
     }
 
-    sqlite3_bind_int(stmt, 1, nuevo_usuario.id_usuario);
-    sqlite3_bind_text(stmt, 2, nuevo_usuario.dni, -1, SQLITE_TRANSIENT);
-    sqlite3_bind_text(stmt, 3, nuevo_usuario.nombre, -1, SQLITE_TRANSIENT);
-    sqlite3_bind_text(stmt, 4, nuevo_usuario.contrasena, -1, SQLITE_TRANSIENT);
-    sqlite3_bind_double(stmt, 5, nuevo_usuario.saldo);
+    sqlite3_bind_int   (stmt, 1, u.id_usuario);
+    sqlite3_bind_text  (stmt, 2, u.dni,       -1, SQLITE_TRANSIENT);
+    sqlite3_bind_text  (stmt, 3, u.nombre,    -1, SQLITE_TRANSIENT);
+    sqlite3_bind_text  (stmt, 4, u.contrasena,-1, SQLITE_TRANSIENT);
+    sqlite3_bind_double(stmt, 5, (double)u.saldo);
 
-    result = sqlite3_step(stmt);
-    if (result != SQLITE_DONE) {
-        printf("Error insertando datos: %s\n", sqlite3_errmsg(db));
-        sqlite3_finalize(stmt);
-        return result;
+    rc = sqlite3_step(stmt);
+    sqlite3_finalize(stmt);
+
+    if (rc != SQLITE_DONE) {
+        printf("[BD] Error INSERT USUARIO: %s\n", sqlite3_errmsg(db));
+        return rc;
     }
-
-    result = sqlite3_finalize(stmt);
-    if (result != SQLITE_OK) {
-        printf("Error finalizando statement: %s\n", sqlite3_errmsg(db));
-        return result;
-    }
-
-    printf("Se ha insertado correctamente\n");
-
     return SQLITE_OK;
 }
 
-int insertar_alquiler(Alquiler nuevo_alquiler) {
-    if (db == NULL) {
-        return SQLITE_MISUSE;
-    }
+int insertar_alquiler(Alquiler a) {
+    if (!db) return SQLITE_MISUSE;
 
     sqlite3_stmt *stmt = NULL;
-
     const char *sql =
         "INSERT INTO ALQUILER "
-        "(id_alquiler, id_usuario, id_vehiculo, id_estacion_origen, id_estacion_destino, fecha_inicio, fecha_fin, coste_total) "
+        "(id_alquiler, id_usuario, id_vehiculo, id_estacion_origen, "
+        " id_estacion_destino, fecha_inicio, fecha_fin, coste_total) "
         "VALUES (?, ?, ?, ?, ?, ?, ?, ?);";
 
-    int result = sqlite3_prepare_v2(db, sql, -1, &stmt, NULL);
-    if (result != SQLITE_OK) {
-        printf("Error preparando la consulta: %s\n", sqlite3_errmsg(db));
-        return result;
+    int rc = sqlite3_prepare_v2(db, sql, -1, &stmt, NULL);
+    if (rc != SQLITE_OK) {
+        printf("[BD] Error preparando INSERT ALQUILER: %s\n", sqlite3_errmsg(db));
+        return rc;
     }
 
-    sqlite3_bind_int(stmt, 1, nuevo_alquiler.id_alquiler);
-    sqlite3_bind_int(stmt, 2, nuevo_alquiler.id_usuario);
-    sqlite3_bind_int(stmt, 3, nuevo_alquiler.id_vehiculo);
-    sqlite3_bind_int(stmt, 4, nuevo_alquiler.id_estacion_origen);
+    sqlite3_bind_int(stmt, 1, a.id_alquiler);
+    sqlite3_bind_int(stmt, 2, a.id_usuario);
+    sqlite3_bind_int(stmt, 3, a.id_vehiculo);
+    sqlite3_bind_int(stmt, 4, a.id_estacion_origen);
 
-    if (nuevo_alquiler.id_estacion_destino > 0) {
-        sqlite3_bind_int(stmt, 5, nuevo_alquiler.id_estacion_destino);
-    } else {
+    if (a.id_estacion_destino > 0)
+        sqlite3_bind_int(stmt, 5, a.id_estacion_destino);
+    else
         sqlite3_bind_null(stmt, 5);
-    }
 
-    sqlite3_bind_text(stmt, 6, nuevo_alquiler.fecha_inicio, -1, SQLITE_TRANSIENT);
+    sqlite3_bind_text(stmt, 6, a.fecha_inicio, -1, SQLITE_TRANSIENT);
 
-    if (nuevo_alquiler.fecha_fin != '\0') {
-        sqlite3_bind_text(stmt, 7, nuevo_alquiler.fecha_fin, -1, SQLITE_TRANSIENT);
-    } else {
+    if (strlen(a.fecha_fin) > 0)
+        sqlite3_bind_text(stmt, 7, a.fecha_fin, -1, SQLITE_TRANSIENT);
+    else
         sqlite3_bind_null(stmt, 7);
+
+    sqlite3_bind_double(stmt, 8, (double)a.coste_total);
+
+    rc = sqlite3_step(stmt);
+    sqlite3_finalize(stmt);
+
+    if (rc != SQLITE_DONE) {
+        printf("[BD] Error INSERT ALQUILER: %s\n", sqlite3_errmsg(db));
+        return rc;
     }
-
-    sqlite3_bind_double(stmt, 8, (double)nuevo_alquiler.coste_total);
-
-    result = sqlite3_step(stmt);
-    if (result != SQLITE_DONE) {
-        printf("Error insertando datos: %s\n", sqlite3_errmsg(db));
-        sqlite3_finalize(stmt);
-        return result;
-    }
-
-    result = sqlite3_finalize(stmt);
-    if (result != SQLITE_OK) {
-        printf("Error finalizando statement: %s\n", sqlite3_errmsg(db));
-        return result;
-    }
-
-    printf("Se ha insertado correctamente\n");
-
     return SQLITE_OK;
 }
 
-int borrar_estacion(int id_estacion) {
-    if (db == NULL) {
-        return SQLITE_MISUSE;
-    }
+/* ============================================================
+ * BAJA
+ * ============================================================ */
 
+static int borrar_por_id(const char *tabla, const char *col_id, int id) {
+    if (!db) return SQLITE_MISUSE;
+    char sql[128];
+    snprintf(sql, sizeof(sql), "DELETE FROM %s WHERE %s = ?;", tabla, col_id);
     sqlite3_stmt *stmt = NULL;
-    const char *sql = "DELETE FROM ESTACION WHERE id_estacion = ?;";
-
-    int result = sqlite3_prepare_v2(db, sql, -1, &stmt, NULL);
-    if (result != SQLITE_OK) {
-        printf("Error preparando la consulta: %s\n", sqlite3_errmsg(db));
-        return result;
-    }
-
-    sqlite3_bind_int(stmt, 1, id_estacion);
-
-    result = sqlite3_step(stmt);
-    if (result != SQLITE_DONE) {
-        printf("Error eliminando datos: %s\n", sqlite3_errmsg(db));
-        sqlite3_finalize(stmt);
-        return result;
-    }
-
-    int filas = sqlite3_changes(db);
-
-    result = sqlite3_finalize(stmt);
-    if (result != SQLITE_OK) {
-        printf("Error finalizando statement: %s\n", sqlite3_errmsg(db));
-        return result;
-    }
-
-    if (filas == 0) {
-        printf("No existe ninguna estación con ese id\n");
-        return SQLITE_NOTFOUND;
-    }
-
-    printf("Fila borrada correctamente\n");
-
+    int rc = sqlite3_prepare_v2(db, sql, -1, &stmt, NULL);
+    if (rc != SQLITE_OK) return rc;
+    sqlite3_bind_int(stmt, 1, id);
+    rc = sqlite3_step(stmt);
+    sqlite3_finalize(stmt);
+    if (rc != SQLITE_DONE) return rc;
+    if (sqlite3_changes(db) == 0) return SQLITE_NOTFOUND;
     return SQLITE_OK;
 }
 
-int dar_de_baja_vehiculo(int id_vehiculo) {
-    if (db == NULL) {
-        return SQLITE_MISUSE;
-    }
+int borrar_estacion(int id)      { return borrar_por_id("ESTACION", "id_estacion", id); }
+int dar_de_baja_vehiculo(int id) { return borrar_por_id("VEHICULO", "id_vehiculo",  id); }
+int dar_de_baja_usuario(int id)  { return borrar_por_id("USUARIO",  "id_usuario",   id); }
 
-    sqlite3_stmt *stmt = NULL;
-    const char *sql = "DELETE FROM VEHICULO WHERE id_vehiculo = ?;";
+/* ============================================================
+ * ACTUALIZACION
+ * ============================================================ */
 
-    int result = sqlite3_prepare_v2(db, sql, -1, &stmt, NULL);
-    if (result != SQLITE_OK) {
-        printf("Error preparando la consulta: %s\n", sqlite3_errmsg(db));
-        return result;
-    }
-
-    sqlite3_bind_int(stmt, 1, id_vehiculo);
-
-    result = sqlite3_step(stmt);
-    if (result != SQLITE_DONE) {
-        printf("Error eliminando datos: %s\n", sqlite3_errmsg(db));
-        sqlite3_finalize(stmt);
-        return result;
-    }
-
-    int filas = sqlite3_changes(db);
-
-    result = sqlite3_finalize(stmt);
-    if (result != SQLITE_OK) {
-        printf("Error finalizando statement: %s\n", sqlite3_errmsg(db));
-        return result;
-    }
-
-    if (filas == 0) {
-        printf("No existe ningún vehículo con ese id\n");
-        return SQLITE_NOTFOUND;
-    }
-
-    printf("Fila borrada correctamente\n");
-
-    return SQLITE_OK;
-}
-
-int dar_de_baja_usuario(int id_usuario) {
-    if (db == NULL) {
-        return SQLITE_MISUSE;
-    }
-
-    sqlite3_stmt *stmt = NULL;
-    const char *sql = "DELETE FROM USUARIO WHERE id_usuario = ?;";
-
-    int result = sqlite3_prepare_v2(db, sql, -1, &stmt, NULL);
-    if (result != SQLITE_OK) {
-        printf("Error preparando la consulta: %s\n", sqlite3_errmsg(db));
-        return result;
-    }
-
-    sqlite3_bind_int(stmt, 1, id_usuario);
-
-    result = sqlite3_step(stmt);
-    if (result != SQLITE_DONE) {
-        printf("Error eliminando datos: %s\n", sqlite3_errmsg(db));
-        sqlite3_finalize(stmt);
-        return result;
-    }
-
-    int filas = sqlite3_changes(db);
-
-    result = sqlite3_finalize(stmt);
-    if (result != SQLITE_OK) {
-        printf("Error finalizando statement: %s\n", sqlite3_errmsg(db));
-        return result;
-    }
-
-    if (filas == 0) {
-        printf("No existe ningún usuario con ese id\n");
-        return SQLITE_NOTFOUND;
-    }
-
-    printf("Fila borrada correctamente\n");
-
-    return SQLITE_OK;
-}
-
-int actualizar_estacion(Estacion estacion_actualizada) {
-    if (db == NULL) {
-        return SQLITE_MISUSE;
-    }
-
-    if (estacion_actualizada.capacidad_max <= 0 || estacion_actualizada.disponibilidad_actual < 0) {
+int actualizar_estacion(Estacion e) {
+    if (!db) return SQLITE_MISUSE;
+    if (e.capacidad_max <= 0 || e.disponibilidad_actual < 0)
         return SQLITE_CONSTRAINT;
-        }
 
     sqlite3_stmt *stmt = NULL;
     const char *sql =
         "UPDATE ESTACION "
-        "SET nombre = ?, direccion = ?, capacidad_max = ?, disponibilidad_actual = ? "
-        "WHERE id_estacion = ?;";
+        "SET nombre=?, direccion=?, capacidad_max=?, disponibilidad_actual=? "
+        "WHERE id_estacion=?;";
 
-    int result = sqlite3_prepare_v2(db, sql, -1, &stmt, NULL);
-    if (result != SQLITE_OK) {
-        printf("Error preparando la consulta: %s\n", sqlite3_errmsg(db));
-        return result;
-    }
+    int rc = sqlite3_prepare_v2(db, sql, -1, &stmt, NULL);
+    if (rc != SQLITE_OK) return rc;
 
-    sqlite3_bind_text(stmt, 1, estacion_actualizada.nombre, -1, SQLITE_TRANSIENT);
-    sqlite3_bind_text(stmt, 2, estacion_actualizada.direccion, -1, SQLITE_TRANSIENT);
-    sqlite3_bind_int(stmt, 3, estacion_actualizada.capacidad_max);
-    sqlite3_bind_int(stmt, 4, estacion_actualizada.disponibilidad_actual);
-    sqlite3_bind_int(stmt, 5, estacion_actualizada.id_estacion);
+    sqlite3_bind_text(stmt, 1, e.nombre,    -1, SQLITE_TRANSIENT);
+    sqlite3_bind_text(stmt, 2, e.direccion, -1, SQLITE_TRANSIENT);
+    sqlite3_bind_int (stmt, 3, e.capacidad_max);
+    sqlite3_bind_int (stmt, 4, e.disponibilidad_actual);
+    sqlite3_bind_int (stmt, 5, e.id_estacion);
 
-    result = sqlite3_step(stmt);
-    if (result != SQLITE_DONE) {
-        printf("Error eliminando datos: %s\n", sqlite3_errmsg(db));
-        sqlite3_finalize(stmt);
-        return result;
-    }
-
-    int filas = sqlite3_changes(db);
-
-    result = sqlite3_finalize(stmt);
-    if (result != SQLITE_OK) {
-        printf("Error finalizando statement: %s\n", sqlite3_errmsg(db));
-        return result;
-    }
-
-    if (filas == 0) {
-        printf("No existe ninguna estación con ese id\n");
-        return SQLITE_NOTFOUND;
-    }
-
-    printf("Actualizado correctamente\n");
-
+    rc = sqlite3_step(stmt);
+    sqlite3_finalize(stmt);
+    if (rc != SQLITE_DONE) return rc;
+    if (sqlite3_changes(db) == 0) return SQLITE_NOTFOUND;
     return SQLITE_OK;
 }
 
-int actualizar_usuario(Usuario usuario_actualizado) {
-    if (db == NULL) {
-        return SQLITE_MISUSE;
-    }
+int actualizar_usuario(Usuario u) {
+    if (!db) return SQLITE_MISUSE;
 
     sqlite3_stmt *stmt = NULL;
     const char *sql =
         "UPDATE USUARIO "
-        "SET dni = ?, nombre = ?, contrasena = ?, saldo = ? "
-        "WHERE id_estacion = ?;";
+        "SET dni=?, nombre=?, contrasena=?, saldo=? "
+        "WHERE id_usuario=?;";
 
-    int result = sqlite3_prepare_v2(db, sql, -1, &stmt, NULL);
-    if (result != SQLITE_OK) {
-        printf("Error preparando la consulta: %s\n", sqlite3_errmsg(db));
-        return result;
-    }
+    int rc = sqlite3_prepare_v2(db, sql, -1, &stmt, NULL);
+    if (rc != SQLITE_OK) return rc;
 
-    sqlite3_bind_int(stmt, 5, usuario_actualizado.id_usuario);
-    sqlite3_bind_text(stmt, 1, usuario_actualizado.dni, -1, SQLITE_TRANSIENT);
-    sqlite3_bind_text(stmt, 2, usuario_actualizado.nombre, -1, SQLITE_TRANSIENT);
-    sqlite3_bind_text(stmt, 3, usuario_actualizado.contrasena, -1, SQLITE_TRANSIENT);
-    sqlite3_bind_double(stmt, 4, usuario_actualizado.saldo);
+    sqlite3_bind_text  (stmt, 1, u.dni,       -1, SQLITE_TRANSIENT);
+    sqlite3_bind_text  (stmt, 2, u.nombre,    -1, SQLITE_TRANSIENT);
+    sqlite3_bind_text  (stmt, 3, u.contrasena,-1, SQLITE_TRANSIENT);
+    sqlite3_bind_double(stmt, 4, (double)u.saldo);
+    sqlite3_bind_int   (stmt, 5, u.id_usuario);
 
-    result = sqlite3_step(stmt);
-    if (result != SQLITE_DONE) {
-        printf("Error eliminando datos: %s\n", sqlite3_errmsg(db));
-        sqlite3_finalize(stmt);
-        return result;
-    }
-
-    int filas = sqlite3_changes(db);
-
-    result = sqlite3_finalize(stmt);
-    if (result != SQLITE_OK) {
-        printf("Error finalizando statement: %s\n", sqlite3_errmsg(db));
-        return result;
-    }
-
-    if (filas == 0) {
-        printf("No existe ningún usuario con ese id\n");
-        return SQLITE_NOTFOUND;
-    }
-
-    printf("Actualizado correctamente\n");
-
+    rc = sqlite3_step(stmt);
+    sqlite3_finalize(stmt);
+    if (rc != SQLITE_DONE) return rc;
+    if (sqlite3_changes(db) == 0) return SQLITE_NOTFOUND;
     return SQLITE_OK;
 }
 
-int actualizar_vehiculo(Vehiculo vehiculo_actualizado) {
-    if (db == NULL) {
-        return SQLITE_MISUSE;
-    }
+int actualizar_vehiculo(Vehiculo v) {
+    if (!db) return SQLITE_MISUSE;
 
     sqlite3_stmt *stmt = NULL;
     const char *sql =
         "UPDATE VEHICULO "
-        "SET tipo = ?, bateria = ?, estado = ?, id_estacion = ? "
-        "WHERE id_vehiculo = ?;";
+        "SET tipo=?, bateria=?, estado=?, id_estacion=? "
+        "WHERE id_vehiculo=?;";
 
-    int result = sqlite3_prepare_v2(db, sql, -1, &stmt, NULL);
-    if (result != SQLITE_OK) {
-        printf("Error preparando la consulta: %s\n", sqlite3_errmsg(db));
-        return result;
-    }
+    int rc = sqlite3_prepare_v2(db, sql, -1, &stmt, NULL);
+    if (rc != SQLITE_OK) return rc;
 
-    char tipo_str[2] = { vehiculo_actualizado.tipo, '\0' };
-    char estado_str[2] = { vehiculo_actualizado.estado, '\0' };
+    char tipo_s[2]   = { v.tipo,   '\0' };
+    char estado_s[2] = { v.estado, '\0' };
 
-    sqlite3_bind_int(stmt, 5, vehiculo_actualizado.id_vehiculo);
-    sqlite3_bind_text(stmt, 1, tipo_str, -1, SQLITE_TRANSIENT);
-    sqlite3_bind_double(stmt, 2, (double)vehiculo_actualizado.bateria);
-    sqlite3_bind_text(stmt, 3, estado_str, -1, SQLITE_TRANSIENT);
-    sqlite3_bind_int(stmt, 4, vehiculo_actualizado.id_estacion);
+    sqlite3_bind_text  (stmt, 1, tipo_s,   -1, SQLITE_TRANSIENT);
+    sqlite3_bind_double(stmt, 2, (double)v.bateria);
+    sqlite3_bind_text  (stmt, 3, estado_s, -1, SQLITE_TRANSIENT);
 
-    result = sqlite3_step(stmt);
-    if (result != SQLITE_DONE) {
-        printf("Error eliminando datos: %s\n", sqlite3_errmsg(db));
-        sqlite3_finalize(stmt);
-        return result;
-    }
+    if (v.id_estacion > 0)
+        sqlite3_bind_int(stmt, 4, v.id_estacion);
+    else
+        sqlite3_bind_null(stmt, 4);
 
-    int filas = sqlite3_changes(db);
+    sqlite3_bind_int(stmt, 5, v.id_vehiculo);
 
-    result = sqlite3_finalize(stmt);
-    if (result != SQLITE_OK) {
-        printf("Error finalizando statement: %s\n", sqlite3_errmsg(db));
-        return result;
-    }
-
-    if (filas == 0) {
-        printf("No existe ningún usuario con ese id\n");
-        return SQLITE_NOTFOUND;
-    }
-
-    printf("Actualizado correctamente\n");
-
+    rc = sqlite3_step(stmt);
+    sqlite3_finalize(stmt);
+    if (rc != SQLITE_DONE) return rc;
+    if (sqlite3_changes(db) == 0) return SQLITE_NOTFOUND;
     return SQLITE_OK;
+}
+
+/* ============================================================
+ * LECTURA / LISTADO
+ * ============================================================ */
+
+int listar_estaciones(Estacion **lista_out, int *cantidad_out) {
+    if (!db || !lista_out || !cantidad_out) return -1;
+    *lista_out = NULL; *cantidad_out = 0;
+
+    int total = 0;
+    sqlite3_stmt *cnt = NULL;
+    if (sqlite3_prepare_v2(db, "SELECT COUNT(*) FROM ESTACION;", -1, &cnt, NULL) == SQLITE_OK) {
+        if (sqlite3_step(cnt) == SQLITE_ROW) total = sqlite3_column_int(cnt, 0);
+        sqlite3_finalize(cnt);
+    }
+    if (total == 0) return SQLITE_OK;
+
+    Estacion *arr = (Estacion *)malloc(total * sizeof(Estacion));
+    if (!arr) return -1;
+
+    sqlite3_stmt *stmt = NULL;
+    const char *sql =
+        "SELECT id_estacion, nombre, direccion, "
+        "capacidad_max, disponibilidad_actual FROM ESTACION;";
+
+    if (sqlite3_prepare_v2(db, sql, -1, &stmt, NULL) != SQLITE_OK) { free(arr); return -1; }
+
+    int i = 0;
+    while (sqlite3_step(stmt) == SQLITE_ROW && i < total) {
+        arr[i].id_estacion           = sqlite3_column_int(stmt, 0);
+        strncpy(arr[i].nombre,    (const char*)sqlite3_column_text(stmt, 1), 50);
+        strncpy(arr[i].direccion, (const char*)sqlite3_column_text(stmt, 2), 100);
+        arr[i].capacidad_max         = sqlite3_column_int(stmt, 3);
+        arr[i].disponibilidad_actual = sqlite3_column_int(stmt, 4);
+        i++;
+    }
+    sqlite3_finalize(stmt);
+    *lista_out = arr; *cantidad_out = i;
+    return SQLITE_OK;
+}
+
+int listar_vehiculos(Vehiculo **lista_out, int *cantidad_out) {
+    if (!db || !lista_out || !cantidad_out) return -1;
+    *lista_out = NULL; *cantidad_out = 0;
+
+    int total = 0;
+    sqlite3_stmt *cnt = NULL;
+    if (sqlite3_prepare_v2(db, "SELECT COUNT(*) FROM VEHICULO;", -1, &cnt, NULL) == SQLITE_OK) {
+        if (sqlite3_step(cnt) == SQLITE_ROW) total = sqlite3_column_int(cnt, 0);
+        sqlite3_finalize(cnt);
+    }
+    if (total == 0) return SQLITE_OK;
+
+    Vehiculo *arr = (Vehiculo *)malloc(total * sizeof(Vehiculo));
+    if (!arr) return -1;
+
+    sqlite3_stmt *stmt = NULL;
+    const char *sql =
+        "SELECT id_vehiculo, tipo, bateria, estado, "
+        "COALESCE(id_estacion, 0) FROM VEHICULO;";
+
+    if (sqlite3_prepare_v2(db, sql, -1, &stmt, NULL) != SQLITE_OK) { free(arr); return -1; }
+
+    int i = 0;
+    while (sqlite3_step(stmt) == SQLITE_ROW && i < total) {
+        arr[i].id_vehiculo = sqlite3_column_int(stmt, 0);
+        arr[i].tipo        = sqlite3_column_text(stmt, 1)[0];
+        arr[i].bateria     = (float)sqlite3_column_double(stmt, 2);
+        arr[i].estado      = sqlite3_column_text(stmt, 3)[0];
+        arr[i].id_estacion = sqlite3_column_int(stmt, 4);
+        i++;
+    }
+    sqlite3_finalize(stmt);
+    *lista_out = arr; *cantidad_out = i;
+    return SQLITE_OK;
+}
+
+int listar_usuarios(Usuario **lista_out, int *cantidad_out) {
+    if (!db || !lista_out || !cantidad_out) return -1;
+    *lista_out = NULL; *cantidad_out = 0;
+
+    int total = 0;
+    sqlite3_stmt *cnt = NULL;
+    if (sqlite3_prepare_v2(db, "SELECT COUNT(*) FROM USUARIO;", -1, &cnt, NULL) == SQLITE_OK) {
+        if (sqlite3_step(cnt) == SQLITE_ROW) total = sqlite3_column_int(cnt, 0);
+        sqlite3_finalize(cnt);
+    }
+    if (total == 0) return SQLITE_OK;
+
+    Usuario *arr = (Usuario *)malloc(total * sizeof(Usuario));
+    if (!arr) return -1;
+
+    sqlite3_stmt *stmt = NULL;
+    const char *sql = "SELECT id_usuario, dni, nombre, saldo FROM USUARIO;";
+
+    if (sqlite3_prepare_v2(db, sql, -1, &stmt, NULL) != SQLITE_OK) { free(arr); return -1; }
+
+    int i = 0;
+    while (sqlite3_step(stmt) == SQLITE_ROW && i < total) {
+        arr[i].id_usuario = sqlite3_column_int(stmt, 0);
+        strncpy(arr[i].dni,    (const char*)sqlite3_column_text(stmt, 1), 9);
+        strncpy(arr[i].nombre, (const char*)sqlite3_column_text(stmt, 2), 50);
+        arr[i].saldo = (float)sqlite3_column_double(stmt, 3);
+        arr[i].contrasena[0] = '\0';
+        i++;
+    }
+    sqlite3_finalize(stmt);
+    *lista_out = arr; *cantidad_out = i;
+    return SQLITE_OK;
+}
+
+int listar_alquileres(Alquiler **lista_out, int *cantidad_out) {
+    if (!db || !lista_out || !cantidad_out) return -1;
+    *lista_out = NULL; *cantidad_out = 0;
+
+    int total = 0;
+    sqlite3_stmt *cnt = NULL;
+    if (sqlite3_prepare_v2(db, "SELECT COUNT(*) FROM ALQUILER;", -1, &cnt, NULL) == SQLITE_OK) {
+        if (sqlite3_step(cnt) == SQLITE_ROW) total = sqlite3_column_int(cnt, 0);
+        sqlite3_finalize(cnt);
+    }
+    if (total == 0) return SQLITE_OK;
+
+    Alquiler *arr = (Alquiler *)malloc(total * sizeof(Alquiler));
+    if (!arr) return -1;
+
+    sqlite3_stmt *stmt = NULL;
+    const char *sql =
+        "SELECT id_alquiler, id_usuario, id_vehiculo, "
+        "COALESCE(id_estacion_origen,0), COALESCE(id_estacion_destino,0), "
+        "fecha_inicio, COALESCE(fecha_fin,''), coste_total FROM ALQUILER;";
+
+    if (sqlite3_prepare_v2(db, sql, -1, &stmt, NULL) != SQLITE_OK) { free(arr); return -1; }
+
+    int i = 0;
+    while (sqlite3_step(stmt) == SQLITE_ROW && i < total) {
+        arr[i].id_alquiler         = sqlite3_column_int(stmt, 0);
+        arr[i].id_usuario          = sqlite3_column_int(stmt, 1);
+        arr[i].id_vehiculo         = sqlite3_column_int(stmt, 2);
+        arr[i].id_estacion_origen  = sqlite3_column_int(stmt, 3);
+        arr[i].id_estacion_destino = sqlite3_column_int(stmt, 4);
+        strncpy(arr[i].fecha_inicio, (const char*)sqlite3_column_text(stmt, 5), 19);
+        strncpy(arr[i].fecha_fin,    (const char*)sqlite3_column_text(stmt, 6), 19);
+        arr[i].coste_total = (float)sqlite3_column_double(stmt, 7);
+        i++;
+    }
+    sqlite3_finalize(stmt);
+    *lista_out = arr; *cantidad_out = i;
+    return SQLITE_OK;
+}
+
+int listar_vehiculos_bateria_baja(Vehiculo **lista_out, int *cantidad_out, int umbral) {
+    if (!db || !lista_out || !cantidad_out) return -1;
+    *lista_out = NULL; *cantidad_out = 0;
+
+    int total = 0;
+    sqlite3_stmt *cnt = NULL;
+    if (sqlite3_prepare_v2(db, "SELECT COUNT(*) FROM VEHICULO;", -1, &cnt, NULL) == SQLITE_OK) {
+        if (sqlite3_step(cnt) == SQLITE_ROW) total = sqlite3_column_int(cnt, 0);
+        sqlite3_finalize(cnt);
+    }
+    if (total == 0) return SQLITE_OK;
+
+    Vehiculo *arr = (Vehiculo *)malloc(total * sizeof(Vehiculo));
+    if (!arr) return -1;
+
+    sqlite3_stmt *stmt = NULL;
+    const char *sql =
+        "SELECT id_vehiculo, tipo, bateria, estado, COALESCE(id_estacion,0) "
+        "FROM VEHICULO WHERE bateria < ? ORDER BY bateria ASC;";
+
+    if (sqlite3_prepare_v2(db, sql, -1, &stmt, NULL) != SQLITE_OK) { free(arr); return -1; }
+    sqlite3_bind_int(stmt, 1, umbral);
+
+    int i = 0;
+    while (sqlite3_step(stmt) == SQLITE_ROW && i < total) {
+        arr[i].id_vehiculo = sqlite3_column_int(stmt, 0);
+        arr[i].tipo        = sqlite3_column_text(stmt, 1)[0];
+        arr[i].bateria     = (float)sqlite3_column_double(stmt, 2);
+        arr[i].estado      = sqlite3_column_text(stmt, 3)[0];
+        arr[i].id_estacion = sqlite3_column_int(stmt, 4);
+        i++;
+    }
+    sqlite3_finalize(stmt);
+    *lista_out = arr; *cantidad_out = i;
+    return SQLITE_OK;
+}
+
+int buscar_estacion(int id, Estacion *out) {
+    if (!db || !out) return -1;
+    sqlite3_stmt *stmt = NULL;
+    const char *sql =
+        "SELECT id_estacion, nombre, direccion, capacidad_max, disponibilidad_actual "
+        "FROM ESTACION WHERE id_estacion = ?;";
+    if (sqlite3_prepare_v2(db, sql, -1, &stmt, NULL) != SQLITE_OK) return -1;
+    sqlite3_bind_int(stmt, 1, id);
+    int rc = -1;
+    if (sqlite3_step(stmt) == SQLITE_ROW) {
+        out->id_estacion           = sqlite3_column_int(stmt, 0);
+        strncpy(out->nombre,    (const char*)sqlite3_column_text(stmt, 1), 50);
+        strncpy(out->direccion, (const char*)sqlite3_column_text(stmt, 2), 100);
+        out->capacidad_max         = sqlite3_column_int(stmt, 3);
+        out->disponibilidad_actual = sqlite3_column_int(stmt, 4);
+        rc = 0;
+    }
+    sqlite3_finalize(stmt);
+    return rc;
+}
+
+int buscar_vehiculo(int id, Vehiculo *out) {
+    if (!db || !out) return -1;
+    sqlite3_stmt *stmt = NULL;
+    const char *sql =
+        "SELECT id_vehiculo, tipo, bateria, estado, COALESCE(id_estacion,0) "
+        "FROM VEHICULO WHERE id_vehiculo = ?;";
+    if (sqlite3_prepare_v2(db, sql, -1, &stmt, NULL) != SQLITE_OK) return -1;
+    sqlite3_bind_int(stmt, 1, id);
+    int rc = -1;
+    if (sqlite3_step(stmt) == SQLITE_ROW) {
+        out->id_vehiculo = sqlite3_column_int(stmt, 0);
+        out->tipo        = sqlite3_column_text(stmt, 1)[0];
+        out->bateria     = (float)sqlite3_column_double(stmt, 2);
+        out->estado      = sqlite3_column_text(stmt, 3)[0];
+        out->id_estacion = sqlite3_column_int(stmt, 4);
+        rc = 0;
+    }
+    sqlite3_finalize(stmt);
+    return rc;
+}
+
+int buscar_usuario(int id, Usuario *out) {
+    if (!db || !out) return -1;
+    sqlite3_stmt *stmt = NULL;
+    const char *sql =
+        "SELECT id_usuario, dni, nombre, saldo FROM USUARIO WHERE id_usuario = ?;";
+    if (sqlite3_prepare_v2(db, sql, -1, &stmt, NULL) != SQLITE_OK) return -1;
+    sqlite3_bind_int(stmt, 1, id);
+    int rc = -1;
+    if (sqlite3_step(stmt) == SQLITE_ROW) {
+        out->id_usuario = sqlite3_column_int(stmt, 0);
+        strncpy(out->dni,    (const char*)sqlite3_column_text(stmt, 1), 9);
+        strncpy(out->nombre, (const char*)sqlite3_column_text(stmt, 2), 50);
+        out->saldo = (float)sqlite3_column_double(stmt, 3);
+        out->contrasena[0] = '\0';
+        rc = 0;
+    }
+    sqlite3_finalize(stmt);
+    return rc;
 }
