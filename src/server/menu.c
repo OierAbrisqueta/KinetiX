@@ -584,6 +584,43 @@ static void usuario_modificar(void) {
     ui_pausa();
 }
 
+static void usuario_listado(void) {
+    ui_limpiar();
+    printf("\n  --- LISTADO DE USUARIOS ---\n\n");
+
+    Usuario *usuarios = NULL;
+    int n = 0;
+
+    int rc = listar_usuarios(&usuarios, &n);
+    if (rc != SQLITE_OK) {
+        printf("Error al listar usuarios, error: %d.\n", rc);
+        if (usuarios) free(usuarios);
+        ui_pausa();
+        return;
+    }
+
+    if (n == 0) {
+        printf("No existen usuarios\n");
+        if (usuarios) free(usuarios);
+        ui_pausa();
+        return;
+    }
+
+    printf("ID DNI Nombre saldo\n");
+
+    for (int i = 0; i < n; i++) {
+        printf("%d %s %s %f\n",
+               usuarios[i].id_usuario,
+               usuarios[i].dni,
+               usuarios[i].nombre,
+               usuarios[i].saldo);
+    }
+
+    printf("Total: %d usuarios.\n", n);
+    free(usuarios);
+    ui_pausa();
+}
+
 void menu_usuarios(void) {
     int opcion;
     do {
@@ -594,15 +631,17 @@ void menu_usuarios(void) {
         printf("  |  1. Alta de usuario                              |\n");
         printf("  |  2. Baja de usuario                              |\n");
         printf("  |  3. Modificar usuario                            |\n");
+        printf("  |  4. Listar usuarios                            |\n");
         printf("  |  0. Volver al menu principal                     |\n");
         ui_separador();
 
-        opcion = ui_leer_int("Seleccione opcion", 0, 3);
+        opcion = ui_leer_int("Seleccione opcion", 0, 4);
 
         switch (opcion) {
-            case 1: usuario_alta();      break;
-            case 2: usuario_baja();      break;
+            case 1: usuario_alta(); break;
+            case 2: usuario_baja(); break;
             case 3: usuario_modificar(); break;
+            case 4: usuario_listado(); break;
             case 0: break;
             default: printf("  Opcion no valida.\n"); ui_pausa(); break;
         }
