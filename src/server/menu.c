@@ -83,7 +83,7 @@ void menu_banner(void) {
     printf("  ##                                              ##\n");
     printf("  ##   K I N E T I X  -  Gestion de Flota        ##\n");
     printf("  ##        Herramienta de Administracion         ##\n");
-    printf("  ##              Fase 1 - Servidor Local         ##\n");
+    printf("  ##                       Servidor Local         ##\n");
     printf("  ##                                              ##\n");
     printf("  ##################################################\n");
     printf("\n");
@@ -270,6 +270,44 @@ static void estacion_modificar(void) {
     ui_pausa();
 }
 
+static void estacion_listado(void) {
+    ui_limpiar();
+    printf("\n  --- LISTADO DE ESTACIONES ---\n\n");
+
+    Estacion *estaciones = NULL;
+    int n = 0;
+
+    int rc = listar_estaciones(&estaciones, &n);
+    if (rc != SQLITE_OK) {
+        printf("Error al listar estaciones, error: %d.\n", rc);
+        if (estaciones) free(estaciones);
+        ui_pausa();
+        return;
+    }
+
+    if (n == 0) {
+        printf("No existen estaciones\n");
+        if (estaciones) free(estaciones);
+        ui_pausa();
+        return;
+    }
+
+    printf("ID Nombre Direccion Capacidad Max Disponibles\n");
+
+    for (int i = 0; i < n; i++) {
+        printf("%d %s %s %d %d\n",
+               estaciones[i].id_estacion,
+               estaciones[i].nombre,
+               estaciones[i].direccion,
+               estaciones[i].capacidad_max,
+               estaciones[i].disponibilidad_actual);
+    }
+
+    printf("Total: %d estacion(es).\n", n);
+    free(estaciones);
+    ui_pausa();
+}
+
 void menu_estaciones(void) {
     int opcion;
     do {
@@ -280,15 +318,17 @@ void menu_estaciones(void) {
         printf("  |  1. Alta de estacion                             |\n");
         printf("  |  2. Baja de estacion                             |\n");
         printf("  |  3. Modificar estacion                           |\n");
+        printf("  |  4. Listar estaciones                            |\n");
         printf("  |  0. Volver al menu principal                     |\n");
         ui_separador();
 
-        opcion = ui_leer_int("Seleccione opcion", 0, 3);
+        opcion = ui_leer_int("Seleccione opcion", 0, 4);
 
         switch (opcion) {
-            case 1: estacion_alta();       break;
-            case 2: estacion_baja();       break;
-            case 3: estacion_modificar();  break;
+            case 1: estacion_alta(); break;
+            case 2: estacion_baja(); break;
+            case 3: estacion_modificar(); break;
+            case 4: estacion_listado(); break;
             case 0: break;
             default: printf("  Opcion no valida.\n"); ui_pausa(); break;
         }
