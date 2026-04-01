@@ -303,7 +303,7 @@ static void estacion_listado(void) {
                estaciones[i].disponibilidad_actual);
     }
 
-    printf("Total: %d estacion(es).\n", n);
+    printf("Total: %d estaciones.\n", n);
     free(estaciones);
     ui_pausa();
 }
@@ -441,6 +441,44 @@ static void vehiculo_modificar(void) {
     ui_pausa();
 }
 
+static void vehiculo_listado(void) {
+    ui_limpiar();
+    printf("\n  --- LISTADO DE VEHICULOS ---\n\n");
+
+    Vehiculo *vehiculos = NULL;
+    int n = 0;
+
+    int rc = listar_vehiculos(&vehiculos, &n);
+    if (rc != SQLITE_OK) {
+        printf("Error al listar vehiculos, error: %d.\n", rc);
+        if (vehiculos) free(vehiculos);
+        ui_pausa();
+        return;
+    }
+
+    if (n == 0) {
+        printf("No existen vehiculos\n");
+        if (vehiculos) free(vehiculos);
+        ui_pausa();
+        return;
+    }
+
+    printf("ID Tipo Bateria id_estacion estado\n");
+
+    for (int i = 0; i < n; i++) {
+        printf("%d %s %f %d %s\n",
+               vehiculos[i].id_vehiculo,
+               vehiculos[i].tipo,
+               vehiculos[i].bateria,
+               vehiculos[i].id_estacion,
+               vehiculos[i].estado);
+    }
+
+    printf("Total: %d vehiculos.\n", n);
+    free(vehiculos);
+    ui_pausa();
+}
+
 void menu_vehiculos(void) {
     int opcion;
     do {
@@ -451,15 +489,17 @@ void menu_vehiculos(void) {
         printf("  |  1. Alta de vehiculo                             |\n");
         printf("  |  2. Baja de vehiculo                             |\n");
         printf("  |  3. Modificar vehiculo                           |\n");
+        printf("  |  4. Listar vehiculos                              |\n");
         printf("  |  0. Volver al menu principal                     |\n");
         ui_separador();
 
-        opcion = ui_leer_int("Seleccione opcion", 0, 3);
+        opcion = ui_leer_int("Seleccione opcion", 0, 4);
 
         switch (opcion) {
-            case 1: vehiculo_alta();      break;
-            case 2: vehiculo_baja();      break;
+            case 1: vehiculo_alta(); break;
+            case 2: vehiculo_baja(); break;
             case 3: vehiculo_modificar(); break;
+            case 4: vehiculo_listado(); break;
             case 0: break;
             default: printf("  Opcion no valida.\n"); ui_pausa(); break;
         }
