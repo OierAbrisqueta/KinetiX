@@ -466,7 +466,7 @@ static void vehiculo_listado(void) {
     printf("ID Tipo Bateria id_estacion estado\n");
 
     for (int i = 0; i < n; i++) {
-        printf("%d %s %f %d %s\n",
+        printf("%d %c %f %d %c\n",
                vehiculos[i].id_vehiculo,
                vehiculos[i].tipo,
                vehiculos[i].bateria,
@@ -652,23 +652,125 @@ void menu_usuarios(void) {
  * SUBMENU HISTORICO / LOGS
  * ============================================================ */
 
+static void imprimir_alquileres(Alquiler *alquileres, int n) {
+    if (n == 0) {
+        printf("    No se han encontrado alquileres");
+    }
+
+    printf("ID Usuario Vehiculo Est.Origen Est.Destino Inicio Fin Coste");
+
+    for (int i = 0; i < n; i++) {
+        char dest[5];
+        char fin[21];
+
+        if (alquileres[i].id_estacion_destino > 0) {
+            snprintf(dest, sizeof(dest), "%d", alquileres[i].id_estacion_destino);
+        } else {
+            snprintf(dest, sizeof(dest), "-");
+        }
+
+        if (strlen(alquileres[i].fecha_fin) > 0)
+            strcpy(fin, alquileres[i].fecha_fin);
+        else {
+            strcpy(fin, "En curso");
+        }
+
+        printf("  %d %d %d %d %s %s %s %f EUR\n",
+               alquileres[i].id_alquiler,
+               alquileres[i].id_usuario,
+               alquileres[i].id_vehiculo,
+               alquileres[i].id_estacion_origen,
+               dest,
+               alquileres[i].fecha_inicio,
+               fin,
+               alquileres[i].coste_total);
+    }
+    printf("    Total: %d alquileres", n);
+}
+
 void menu_historico(void) {
     int opcion;
     do {
         ui_limpiar();
         ui_separador();
-        printf("  |         HISTORICO Y TRAZABILIDAD                |\n");
+        printf("  |                    HISTORICO                     |\n");
         ui_separador();
-        printf("  |  1. Ver ultimas 20 entradas del log              |\n");
-        printf("  |  2. Ver ultimas 50 entradas del log              |\n");
-        printf("  |  0. Volver                                       |\n");
+        printf("  |  1. Ver todos los alquileres                              |\n");
+        printf("  |  2. Filtrar por usuario                              |\n");
+        printf("  |  3. Filtrar por fecha (Formato: YYYY/MM/DD)                            |\n");
+        printf("  |  4. Ver 20 últimos alquileres                            |\n");
+        printf("  |  5. Ver 50 últimos alquileres                            |\n");
+        printf("  |  0. Volver al menu principal                     |\n");
         ui_separador();
 
-        opcion = ui_leer_int("Seleccione opcion", 0, 2);
+        opcion = ui_leer_int("Selecciona una opcion", 0, 5);
 
         switch (opcion) {
-            case 1: log_mostrar_ultimas(20); ui_pausa(); break;
-            case 2: log_mostrar_ultimas(50); ui_pausa(); break;
+
+            case 1: {
+                ui_limpiar();
+                printf("      TODOS LOS ALQUILERES \n");
+                Alquiler *alquieres = NULL;
+                int cantidad = 0;
+                listar_alquileres(&alquieres, &cantidad);
+                imprimir_alquileres(alquieres, cantidad);
+                if (alquieres) free(alquieres);
+                ui_pausa();
+                break;
+            }
+
+            case 2: {
+                ui_limpiar();
+                printf("      FILTRAR POR USUARIO \n\n");
+                int id = ui_leer_int("ID de usuario", 1, 99999);
+                if (id < 0) {
+                    ui_pausa();
+                    break;
+                }
+
+                Alquiler *alquieres = NULL;
+                int cantidad = 0;
+                buscar_alquiler_por_usuario(id, &alquieres, &cantidad);
+                imprimir_alquileres(alquieres, cantidad);
+                if (alquieres) free(alquieres);
+                ui_pausa();
+                break;
+            }
+
+            case 3: {
+                ui_limpiar();
+                printf("      FILTRAR POR FECHA \n\n");
+                int ano  = ui_leer_int("Año (YYYY)", 2025, 2050);
+                int mes   = ui_leer_int("Mes (1-12)", 1, 12);
+                int dia   = ui_leer_int("Dia (1-31)", 1, 31);
+                if (ano < 0 || mes < 0 || dia < 0) {
+                    ui_pausa();
+                    break;
+                }
+                char fecha[20];
+                snprintf(fecha, sizeof(fecha), "%d-%d-%d", ano, mes, dia);
+
+                Alquiler *alquieres = NULL;
+                int cantidad = 0;
+                 buscar_alquiler_por_fecha(fecha, &alquieres, &cantidad);
+                imprimir_alquileres(alquieres, cantidad);
+                if (alquieres) free(alquieres);
+                ui_pausa();
+                break;
+            }
+
+            case 4: {
+                log_mostrar_ultimas(20);
+                ui_pausa();
+                break;
+            }
+
+            case 5: {
+                log_mostrar_ultimas(50);
+                ui_pausa();
+                break;
+            }
+
             case 0: break;
         }
     } while (opcion != 0);
@@ -716,40 +818,4 @@ void menu_configuracion(void) {
                 break;
         }
     } while (opcion != 0);
-}
-
-static void imprimir_alquileres(Alquiler *alquileres, int n) {
-    if (n == 0) {
-        printf("    No se han encontrado alquileres");
-    }
-
-    printf("ID Usuario Vehiculo Est.Origen Est.Destino Inicio Fin Coste");
-
-    for (int i = 0; i < n; i++) {
-        char dest[5];
-        char fin[21];
-
-        if (alquileres[i].id_estacion_destino > 0) {
-            snprintf(dest, sizeof(dest), "%d", alquileres[i].id_estacion_destino);
-        } else {
-            snprintf(dest, sizeof(dest), "-");
-        }
-
-        if (strlen(alquileres[i].fecha_fin) > 0)
-            strcpy(fin, alquileres[i].fecha_fin);
-        else {
-            strcpy(fin, "En curso");
-        }
-
-        printf("  %d %d %d %d %s %s %s %f EUR\n",
-               alquileres[i].id_alquiler,
-               alquileres[i].id_usuario,
-               alquileres[i].id_vehiculo,
-               alquileres[i].id_estacion_origen,
-               dest,
-               alquileres[i].fecha_inicio,
-               fin,
-               alquileres[i].coste_total);
-    }
-    printf("    Total: %d alquileres", n);
 }
