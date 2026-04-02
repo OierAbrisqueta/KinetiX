@@ -631,7 +631,7 @@ void menu_usuarios(void) {
         printf("  |  1. Alta de usuario                              |\n");
         printf("  |  2. Baja de usuario                              |\n");
         printf("  |  3. Modificar usuario                            |\n");
-        printf("  |  4. Listar usuarios                            |\n");
+        printf("  |  4. Listar usuarios                              |\n");
         printf("  |  0. Volver al menu principal                     |\n");
         ui_separador();
 
@@ -695,11 +695,11 @@ void menu_historico(void) {
         ui_separador();
         printf("  |                    HISTORICO                     |\n");
         ui_separador();
-        printf("  |  1. Ver todos los alquileres                              |\n");
-        printf("  |  2. Filtrar por usuario                              |\n");
-        printf("  |  3. Filtrar por fecha (Formato: YYYY/MM/DD)                            |\n");
-        printf("  |  4. Ver 20 últimos alquileres                            |\n");
-        printf("  |  5. Ver 50 últimos alquileres                            |\n");
+        printf("  |  1. Ver todos los alquileres                     |\n");
+        printf("  |  2. Filtrar por usuario                          |\n");
+        printf("  |  3. Filtrar por fecha (Formato: YYYY/MM/DD)      |\n");
+        printf("  |  4. Ver 20 últimos alquileres                    |\n");
+        printf("  |  5. Ver 50 últimos alquileres                    |\n");
         printf("  |  0. Volver al menu principal                     |\n");
         ui_separador();
 
@@ -780,16 +780,35 @@ void menu_historico(void) {
  * SUBMENU INFORMES (stub — se desarrolla en Paso 7)
  * ============================================================ */
 
+/*
+*Informe de Ocupación: Listado de estaciones con el porcentaje de anclajes usados vs.
+libres.
+Ranking de Uso: Vehículos con más kilómetros o tiempo de uso (útil para mantenimiento).
+Resumen Financiero: Recaudación total por día o por tipo de vehículo (Bici vs. Patinete).
+Informe de Incidencias: Listado de vehículos con batería baja (<20%) o marcados como
+"averiados"
+.*/
+
 void menu_informes(void) {
-    ui_limpiar();
-    ui_separador();
-    printf("  |         INFORMES Y EXPORTACION                  |\n");
-    ui_separador();
-    printf("  |  [Modulo en desarrollo - Paso 7]                 |\n");
-    printf("  |  Aqui iran los informes de ocupacion,            |\n");
-    printf("  |  vehiculos con bateria baja, recaudacion...      |\n");
-    ui_separador();
-    ui_pausa();
+    int opcion;
+    do {
+        ui_limpiar();
+        ui_separador();
+        printf("  |                     INFORMES                     |\n");
+        ui_separador();
+        printf("  |  1. Informe de Ocupacion                         |\n");
+        printf("  |  2. Ranking de uso de vehiculos                  |\n");
+        printf("  |  3. Resumen Financiero (Dia o Tipo de vehiculo)  |\n");
+        printf("  |  4. Informe de Incidencias (Bateria o averiados) |\n");
+        printf("  |  0. Volver al menu principal                     |\n");
+        ui_separador();
+
+        opcion = ui_leer_int("Seleccione una opcion", 0, 4);
+
+        switch (opcion) {
+
+        }
+    } while (opcion != 0);
 }
 
 /* ============================================================
