@@ -717,3 +717,39 @@ void menu_configuracion(void) {
         }
     } while (opcion != 0);
 }
+
+static void imprimir_alquileres(Alquiler *alquileres, int n) {
+    if (n == 0) {
+        printf("    No se han encontrado alquileres");
+    }
+
+    printf("ID Usuario Vehiculo Est.Origen Est.Destino Inicio Fin Coste");
+
+    for (int i = 0; i < n; i++) {
+        char dest[5];
+        char fin[21];
+
+        if (alquileres[i].id_estacion_destino > 0) {
+            snprintf(dest, sizeof(dest), "%d", alquileres[i].id_estacion_destino);
+        } else {
+            snprintf(dest, sizeof(dest), "-");
+        }
+
+        if (strlen(alquileres[i].fecha_fin) > 0)
+            strcpy(fin, alquileres[i].fecha_fin);
+        else {
+            strcpy(fin, "En curso");
+        }
+
+        printf("  %d %d %d %d %s %s %s %f EUR\n",
+               alquileres[i].id_alquiler,
+               alquileres[i].id_usuario,
+               alquileres[i].id_vehiculo,
+               alquileres[i].id_estacion_origen,
+               dest,
+               alquileres[i].fecha_inicio,
+               fin,
+               alquileres[i].coste_total);
+    }
+    printf("    Total: %d alquileres", n);
+}
