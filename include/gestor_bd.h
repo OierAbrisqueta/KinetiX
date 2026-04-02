@@ -29,5 +29,7 @@ int listar_vehiculos_bateria_baja(Vehiculo **lista_out, int *cantidad_out, int u
 int buscar_estacion(int id, Estacion *out);
 int buscar_vehiculo(int id, Vehiculo *out);
 int buscar_usuario(int id,  Usuario  *out);
+int buscar_alquiler_por_usuario(int id_usuario, Alquiler **lista_out, int *n_out);
+int buscar_alquiler_por_fecha(char *fecha, Alquiler **lista_out, int *n_out);
 
 #endif

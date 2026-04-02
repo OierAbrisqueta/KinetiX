@@ -602,3 +602,60 @@ int buscar_alquiler_por_usuario(int id_usuario, Alquiler **lista_out, int *n_out
     *n_out = i;
     return SQLITE_OK;
 }
+
+int buscar_alquiler_por_fecha(char *fecha, Alquiler **lista_out, int *n_out) {
+    if (!db || !lista_out || !n_out) return -1;
+    *lista_out = NULL;
+    *n_out = 0;
+
+    int total = 0;
+    sqlite3_stmt *count = NULL;
+    const char *count_sql = "SELECT COUNT(*) FROM ALQUILER WHERE DATE(fecha_inicio) = ?;";
+    int rc = sqlite3_prepare_v2(db, count_sql, -1, &count, NULL);
+    if (rc == SQLITE_OK) {
+        sqlite3_bind_text(count, 1, fecha, -1, SQLITE_TRANSIENT);
+        if (sqlite3_step(count) == SQLITE_ROW) total = sqlite3_column_int(count, 0);
+        sqlite3_finalize(count);
+    } else {
+        return -1;
+    }
+    if (total == 0) return SQLITE_OK;
+
+    Alquiler *alquileres = (Alquiler *)malloc(total * sizeof(Alquiler));
+    if (!alquileres) {
+        printf("Error: No se ha podido reservar en la memoria\n");
+        return -1;
+    };
+
+    sqlite3_stmt *stmt = NULL;
+    const char *sql =
+        "SELECT id_alquiler, id_usuario, id_vehiculo, "
+        "id_estacion_origen, COALESCE(id_estacion_destino,0), "
+        "fecha_inicio, COALESCE(fecha_fin,''), coste_total "
+        "FROM ALQUILER WHERE DATE(fecha_inicio) = ? ORDER BY fecha_inicio DESC;";
+
+    int rc_2 = sqlite3_prepare_v2(db, sql, -1, &stmt, NULL);
+    if (rc_2 != SQLITE_OK) {
+        free(alquileres);
+        return -1;
+    }
+    sqlite3_bind_text(stmt, 1, fecha, -1, SQLITE_TRANSIENT);
+
+    int i = 0;
+    while (sqlite3_step(stmt) == SQLITE_ROW && i < total) {
+        alquileres[i].id_alquiler = sqlite3_column_int(stmt, 0);
+        alquileres[i].id_usuario = sqlite3_column_int(stmt, 1);
+        alquileres[i].id_vehiculo = sqlite3_column_int(stmt, 2);
+        alquileres[i].id_estacion_origen = sqlite3_column_int(stmt, 3);
+        alquileres[i].id_estacion_destino = sqlite3_column_int(stmt, 4);
+        strncpy(alquileres[i].fecha_inicio, (const char*)sqlite3_column_text(stmt, 5), 19);
+        strncpy(alquileres[i].fecha_fin, (const char*)sqlite3_column_text(stmt, 6), 19);
+        alquileres[i].coste_total = (float)sqlite3_column_double(stmt, 7);
+        i++;
+    }
+
+    sqlite3_finalize(stmt);
+    *lista_out = alquileres;
+    *n_out = i;
+    return SQLITE_OK;
+}
