@@ -52,7 +52,7 @@ int config_cargar(const char *ruta) {
     g_config.puerto = 8080; g_config.max_conexiones = 10; g_config.bateria_minima = 15;
     g_config.tarifa_bici_min = 0.05f; g_config.tarifa_patinete_min = 0.07f;
     strncpy(g_config.ip_servidor,   "127.0.0.1",        CONFIG_MAX_VALOR-1);
-    strncpy(g_config.db_ruta,       "data/kinetix.db",  CONFIG_MAX_VALOR-1);
+    strncpy(g_config.db_ruta,       "data/KinetiX.sqlite",  CONFIG_MAX_VALOR-1);
     strncpy(g_config.log_ruta,      "data/activity.log",CONFIG_MAX_VALOR-1);
     strncpy(g_config.reportes_ruta, "data/reportes/",   CONFIG_MAX_VALOR-1);
 

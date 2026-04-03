@@ -31,3 +31,9 @@ configure_file(
         ${CMAKE_BINARY_DIR}/data/config.conf
         COPYONLY
 )
+
+configure_file(
+        ${CMAKE_SOURCE_DIR}/data/KinetiX.sqlite
+        ${CMAKE_BINARY_DIR}/data/KinetiX.sqlite
+        COPYONLY
+)

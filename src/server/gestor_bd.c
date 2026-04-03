@@ -302,27 +302,49 @@ int actualizar_vehiculo(Vehiculo v) {
  * LECTURA / LISTADO
  * ============================================================ */
 
+static int obtener_total(const char *sql_count, int *total_out) {
+    sqlite3_stmt *cnt = NULL;
+    int rc = sqlite3_prepare_v2(db, sql_count, -1, &cnt, NULL);
+    if (rc != SQLITE_OK) {
+        printf("[BD] Error preparando COUNT: %s\n", sqlite3_errmsg(db));
+        return rc;
+    }
+
+    rc = sqlite3_step(cnt);
+    if (rc == SQLITE_ROW) {
+        *total_out = sqlite3_column_int(cnt, 0);
+        sqlite3_finalize(cnt);
+        return SQLITE_OK;
+    }
+
+    sqlite3_finalize(cnt);
+    printf("[BD] Error ejecutando COUNT: %s\n", sqlite3_errmsg(db));
+    return (rc == SQLITE_DONE) ? SQLITE_ERROR : rc;
+}
+
 int listar_estaciones(Estacion **lista_out, int *cantidad_out) {
     if (!db || !lista_out || !cantidad_out) return -1;
     *lista_out = NULL; *cantidad_out = 0;
 
     int total = 0;
-    sqlite3_stmt *cnt = NULL;
-    if (sqlite3_prepare_v2(db, "SELECT COUNT(*) FROM ESTACION;", -1, &cnt, NULL) == SQLITE_OK) {
-        if (sqlite3_step(cnt) == SQLITE_ROW) total = sqlite3_column_int(cnt, 0);
-        sqlite3_finalize(cnt);
-    }
+    int rc = obtener_total("SELECT COUNT(*) FROM ESTACION;", &total);
+    if (rc != SQLITE_OK) return rc;
     if (total == 0) return SQLITE_OK;
 
     Estacion *arr = (Estacion *)malloc(total * sizeof(Estacion));
-    if (!arr) return -1;
+    if (!arr) return SQLITE_NOMEM;
 
     sqlite3_stmt *stmt = NULL;
     const char *sql =
         "SELECT id_estacion, nombre, direccion, "
         "capacidad_max, disponibilidad_actual FROM ESTACION;";
 
-    if (sqlite3_prepare_v2(db, sql, -1, &stmt, NULL) != SQLITE_OK) { free(arr); return -1; }
+    rc = sqlite3_prepare_v2(db, sql, -1, &stmt, NULL);
+    if (rc != SQLITE_OK) {
+        printf("[BD] Error preparando LISTADO ESTACION: %s\n", sqlite3_errmsg(db));
+        free(arr);
+        return rc;
+    }
 
     int i = 0;
     while (sqlite3_step(stmt) == SQLITE_ROW && i < total) {
@@ -343,22 +365,24 @@ int listar_vehiculos(Vehiculo **lista_out, int *cantidad_out) {
     *lista_out = NULL; *cantidad_out = 0;
 
     int total = 0;
-    sqlite3_stmt *cnt = NULL;
-    if (sqlite3_prepare_v2(db, "SELECT COUNT(*) FROM VEHICULO;", -1, &cnt, NULL) == SQLITE_OK) {
-        if (sqlite3_step(cnt) == SQLITE_ROW) total = sqlite3_column_int(cnt, 0);
-        sqlite3_finalize(cnt);
-    }
+    int rc = obtener_total("SELECT COUNT(*) FROM VEHICULO;", &total);
+    if (rc != SQLITE_OK) return rc;
     if (total == 0) return SQLITE_OK;
 
     Vehiculo *arr = (Vehiculo *)malloc(total * sizeof(Vehiculo));
-    if (!arr) return -1;
+    if (!arr) return SQLITE_NOMEM;
 
     sqlite3_stmt *stmt = NULL;
     const char *sql =
         "SELECT id_vehiculo, tipo, bateria, estado, "
         "COALESCE(id_estacion, 0) FROM VEHICULO;";
 
-    if (sqlite3_prepare_v2(db, sql, -1, &stmt, NULL) != SQLITE_OK) { free(arr); return -1; }
+    rc = sqlite3_prepare_v2(db, sql, -1, &stmt, NULL);
+    if (rc != SQLITE_OK) {
+        printf("[BD] Error preparando LISTADO VEHICULO: %s\n", sqlite3_errmsg(db));
+        free(arr);
+        return rc;
+    }
 
     int i = 0;
     while (sqlite3_step(stmt) == SQLITE_ROW && i < total) {
@@ -379,20 +403,22 @@ int listar_usuarios(Usuario **lista_out, int *cantidad_out) {
     *lista_out = NULL; *cantidad_out = 0;
 
     int total = 0;
-    sqlite3_stmt *cnt = NULL;
-    if (sqlite3_prepare_v2(db, "SELECT COUNT(*) FROM USUARIO;", -1, &cnt, NULL) == SQLITE_OK) {
-        if (sqlite3_step(cnt) == SQLITE_ROW) total = sqlite3_column_int(cnt, 0);
-        sqlite3_finalize(cnt);
-    }
+    int rc = obtener_total("SELECT COUNT(*) FROM USUARIO;", &total);
+    if (rc != SQLITE_OK) return rc;
     if (total == 0) return SQLITE_OK;
 
     Usuario *arr = (Usuario *)malloc(total * sizeof(Usuario));
-    if (!arr) return -1;
+    if (!arr) return SQLITE_NOMEM;
 
     sqlite3_stmt *stmt = NULL;
     const char *sql = "SELECT id_usuario, dni, nombre, saldo FROM USUARIO;";
 
-    if (sqlite3_prepare_v2(db, sql, -1, &stmt, NULL) != SQLITE_OK) { free(arr); return -1; }
+    rc = sqlite3_prepare_v2(db, sql, -1, &stmt, NULL);
+    if (rc != SQLITE_OK) {
+        printf("[BD] Error preparando LISTADO USUARIO: %s\n", sqlite3_errmsg(db));
+        free(arr);
+        return rc;
+    }
 
     int i = 0;
     while (sqlite3_step(stmt) == SQLITE_ROW && i < total) {
@@ -413,15 +439,12 @@ int listar_alquileres(Alquiler **lista_out, int *cantidad_out) {
     *lista_out = NULL; *cantidad_out = 0;
 
     int total = 0;
-    sqlite3_stmt *cnt = NULL;
-    if (sqlite3_prepare_v2(db, "SELECT COUNT(*) FROM ALQUILER;", -1, &cnt, NULL) == SQLITE_OK) {
-        if (sqlite3_step(cnt) == SQLITE_ROW) total = sqlite3_column_int(cnt, 0);
-        sqlite3_finalize(cnt);
-    }
+    int rc = obtener_total("SELECT COUNT(*) FROM ALQUILER;", &total);
+    if (rc != SQLITE_OK) return rc;
     if (total == 0) return SQLITE_OK;
 
     Alquiler *arr = (Alquiler *)malloc(total * sizeof(Alquiler));
-    if (!arr) return -1;
+    if (!arr) return SQLITE_NOMEM;
 
     sqlite3_stmt *stmt = NULL;
     const char *sql =
@@ -429,7 +452,12 @@ int listar_alquileres(Alquiler **lista_out, int *cantidad_out) {
         "COALESCE(id_estacion_origen,0), COALESCE(id_estacion_destino,0), "
         "fecha_inicio, COALESCE(fecha_fin,''), coste_total FROM ALQUILER;";
 
-    if (sqlite3_prepare_v2(db, sql, -1, &stmt, NULL) != SQLITE_OK) { free(arr); return -1; }
+    rc = sqlite3_prepare_v2(db, sql, -1, &stmt, NULL);
+    if (rc != SQLITE_OK) {
+        printf("[BD] Error preparando LISTADO ALQUILER: %s\n", sqlite3_errmsg(db));
+        free(arr);
+        return rc;
+    }
 
     int i = 0;
     while (sqlite3_step(stmt) == SQLITE_ROW && i < total) {
@@ -453,22 +481,24 @@ int listar_vehiculos_bateria_baja(Vehiculo **lista_out, int *cantidad_out, int u
     *lista_out = NULL; *cantidad_out = 0;
 
     int total = 0;
-    sqlite3_stmt *cnt = NULL;
-    if (sqlite3_prepare_v2(db, "SELECT COUNT(*) FROM VEHICULO;", -1, &cnt, NULL) == SQLITE_OK) {
-        if (sqlite3_step(cnt) == SQLITE_ROW) total = sqlite3_column_int(cnt, 0);
-        sqlite3_finalize(cnt);
-    }
+    int rc = obtener_total("SELECT COUNT(*) FROM VEHICULO;", &total);
+    if (rc != SQLITE_OK) return rc;
     if (total == 0) return SQLITE_OK;
 
     Vehiculo *arr = (Vehiculo *)malloc(total * sizeof(Vehiculo));
-    if (!arr) return -1;
+    if (!arr) return SQLITE_NOMEM;
 
     sqlite3_stmt *stmt = NULL;
     const char *sql =
         "SELECT id_vehiculo, tipo, bateria, estado, COALESCE(id_estacion,0) "
         "FROM VEHICULO WHERE bateria < ? ORDER BY bateria ASC;";
 
-    if (sqlite3_prepare_v2(db, sql, -1, &stmt, NULL) != SQLITE_OK) { free(arr); return -1; }
+    rc = sqlite3_prepare_v2(db, sql, -1, &stmt, NULL);
+    if (rc != SQLITE_OK) {
+        printf("[BD] Error preparando LISTADO VEHICULOS BATERIA BAJA: %s\n", sqlite3_errmsg(db));
+        free(arr);
+        return rc;
+    }
     sqlite3_bind_int(stmt, 1, umbral);
 
     int i = 0;

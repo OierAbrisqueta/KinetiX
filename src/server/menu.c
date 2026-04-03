@@ -13,6 +13,7 @@
 #include "gestor_log.h"
 #include "gestor_bd.h"
 #include "modelos.h"
+#include "informes.h"
 
 /* ============================================================
  * menu.c - Logica de navegacion y menus del administrador
@@ -797,7 +798,66 @@ static void generar_nombre_informe(const char *tipo, const char *formato, char *
     snprintf(resultado, max, "data/reportes/%s_%s.%s", tipo, fecha, formato);
 }
 
-static void informe_ocupacion(void){}
+static void informe_ocupacion(void) {
+    ui_limpiar();
+    printf("\n  --- INFORME OCUPACION POR ESTACION ---\n\n");
+
+    Estacion *estaciones = NULL;
+    int cantidad = 0;
+    int rc = listar_estaciones(&estaciones, &cantidad);
+
+    if (rc != SQLITE_OK) {
+        printf("  Error al recuperar estaciones. Error: %d\n", rc);
+        ui_pausa();
+        return;
+    }
+
+    if (cantidad <= 0 || estaciones == NULL) {
+        printf("  No hay estaciones registradas");
+        ui_pausa();
+        return;
+    }
+
+    printf("  %s %s %s %s %s\n",
+           "ID", "Nombre", "Capacidad Max", "Disponibles", "Ocupacion");
+
+    for (int i = 0; i < cantidad; i++) {
+        int capacidad = estaciones[i].capacidad_max;
+        int disponibles = estaciones[i].disponibilidad_actual;
+
+        //Se normalizan valores en caso de inconsistencia
+        if (capacidad < 0) capacidad = 0;
+        if (disponibles < 0) disponibles = 0;
+        if (disponibles > capacidad) disponibles = capacidad;
+
+        int ocupados = capacidad - disponibles;
+
+        //Se evita la división por 0
+        float porcentaje = (capacidad > 0)
+                            ? ((float)ocupados * 100.0f / (float)capacidad) : 0.0f;
+
+        if (porcentaje < 0.0f) porcentaje = 0.0f;
+        if (porcentaje > 100.0f) porcentaje = 100.0f;
+
+        char barra[21];
+        int llenos = (int)(porcentaje / 5.0f);
+
+        for (int j = 0; j < 20; j++) {
+            barra[j] = (j < llenos) ? '#' : '.';
+        }
+        barra[20] = '\0';
+
+        printf("  %d %s %d %d %.1f%% [%s]\n",
+               estaciones[i].id_estacion,
+               estaciones[i].nombre,
+               estaciones[i].capacidad_max,
+               estaciones[i].disponibilidad_actual,
+               porcentaje, barra);
+    }
+
+    free(estaciones);
+    ui_pausa();
+}
 
 static void informe_ranking_uso(void){}
 
@@ -822,7 +882,7 @@ void menu_informes(void) {
         opcion = ui_leer_int("Seleccione una opcion", 0, 4);
 
         switch (opcion) {
-
+            case 1: informe_ocupacion(); break;
         }
     } while (opcion != 0);
 }
