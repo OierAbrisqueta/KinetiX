@@ -859,11 +859,204 @@ static void informe_ocupacion(void) {
     ui_pausa();
 }
 
-static void informe_ranking_uso(void){}
+static void informe_ranking_uso(void) {
+    ui_limpiar();
+    printf("\n  --- RANKING DE USO DE VEHICULOS ---\n\n");
 
-static void informe_financiero(void){}
+    UsoVehiculo *lista = NULL;
+    int cantidad = 0;
 
-static void informe_incidencias(void){}
+    int rc = ranking_uso_vehiculo(&lista, &cantidad, 10);
+
+    if (rc != SQLITE_OK) {
+        printf("  Error al generar el ranking. Error: %d\n", rc);
+        ui_pausa();
+        return;
+    }
+
+    if (cantidad <= 0 || lista == NULL) {
+        printf("  No hay datos de alquileres finalizados.\n");
+        if (lista) free(lista);
+        ui_pausa();
+        return;
+    }
+
+    printf("    Pos. ID Veh Tipo Num.Alquiler Min. totales");
+
+    for (int i = 0; i < cantidad; i++) {
+        const char *tipo = (lista[i].tipo == 'B') ? "Bici" : "Patinete";
+        printf("  %d %d %s %d %.1f min\n",
+               i + 1,
+               lista[i].id_vehiculo,
+               tipo,
+               lista[i].num_alquileres,
+               lista[i].minutos_totales);
+    }
+
+    free(lista);
+    ui_pausa();
+}
+
+static void informe_financiero(void) {
+    ui_limpiar();
+    printf("\n  --- INFORME FINANCIERO ---\n\n");
+
+    //Por tipo de vehiculo
+    ResumenPorTipo por_tipo[2];
+    int rc_tipo = informe_recaudacion_por_tipo(por_tipo);
+    if (rc_tipo != SQLITE_OK) {
+        printf("    Error al calcular la recaudacion por tipo. Error: %d\n", rc_tipo);
+    } else {
+        printf("  Recaudacion por tipo de vehiculo:\n\n");
+        printf("  %s %s %s\n", "Tipo", "Num.Alquileres", "Recaudacion");
+
+        const char *nombres[2] = {"Bicicleta", "Patinete"};
+        float total = 0.0f;
+        for (int i = 0; i < 2; i++) {
+            printf("  %s %d %.2f EUR\n",
+                   nombres[i], por_tipo[i].num_alquileres, por_tipo[i].recaudacion);
+            total += por_tipo[i].recaudacion;
+        }
+        printf("  %s\n", "----------------------------------------");
+        printf("  Total: %.2f EUR\n\n",  total);
+    }
+
+    //Por dia
+    ResumenPorDia *por_dia = NULL;
+    int cantidad = 0;
+    int rc_dia = informe_recaudacion_por_dia(&por_dia, &cantidad);
+
+    if (rc_dia != SQLITE_OK) {
+        printf("  Error al calcular la recaudacion por dia. Error: %d\n", rc_dia);
+        if (por_dia) free(por_dia);
+        ui_pausa();
+        return;
+    }
+
+    if (cantidad <= 0 || por_dia == NULL) {
+        printf("  No hay datos diarios para mostrar.\n");
+        if (por_dia) free(por_dia);
+        ui_pausa();
+        return;
+    }
+
+    printf("  Recaudacion por dia:\n\n");
+    printf("  Fecha    Num.Alquileres    Recaudacion");
+    for (int i = 0; i < cantidad; i++) {
+        printf("  %s %d %.2f EUR\n",
+               por_dia[i].fecha, por_dia[i].num_alquileres, por_dia[i].recaudacion);
+    }
+
+    //Exportar CSV
+    printf("\n  Exportar a CSV? (s/n): ");
+    char conf[4];
+    fgets(conf, sizeof(conf), stdin);
+    if (conf[0] == 's' || conf[0] == 'S') {
+        char ruta[128];
+        generar_nombre_informe("report_financiero", "csv", ruta, sizeof(ruta));
+
+        FILE *f = fopen(ruta, "w");
+        if (f) {
+            int seguir = 1;
+            if (fprintf(f, "Fecha,Num_Alquileres,Recaudacion_EUR\n") < 0) seguir = 0;
+            for (int i = 0; i < cantidad && seguir; i++)
+                if (fprintf(f, "%s,%d,%.2f\n",
+                        por_dia[i].fecha, por_dia[i].num_alquileres, por_dia[i].recaudacion) < 0) seguir = 0;
+            if (fclose(f) != 0) seguir = 0;
+
+            if (seguir) {
+                printf("  Exportado a: %s\n", ruta);
+                LOG_I(ruta);
+            } else {
+                printf("  Error escribiendo el CSV.\n");
+            }
+        } else {
+            printf("  Error al crear el fichero.\n");
+        }
+    }
+
+    free(por_dia);
+    ui_pausa();
+}
+
+static void informe_incidencias(void) {
+    ui_limpiar();
+    printf("\n  --- INFORME DE INCIDENCIAS ---\n\n");
+
+    Vehiculo *lista = NULL;
+    int cantidad = 0;
+    int umbral = g_config.bateria_minima > 0 ? g_config.bateria_minima : 20;
+
+    if (listar_vehiculos_bateria_baja(&lista, &cantidad, umbral) != 0 || cantidad == 0) {
+        printf("  No hay vehiculos con bateria baja ni incidencias.\n");
+        ui_pausa(); return;
+    }
+
+    printf("  Vehiculos con bateria < %d%% o estado critico:\n\n", umbral);
+    printf("  %s %s %s %s %s\n",
+           "ID", "Tipo", "Bateria(%)", "Estado", "ID Est.");
+    printf("  --------------------------------------------------\n");
+
+    for (int i = 0; i < cantidad; i++) {
+        const char *tipo = (lista[i].tipo == 'B') ? "Bici" : "Patinete";
+        const char *estado;
+        switch (lista[i].estado) {
+            case 'D': estado = "Disponible"; break;
+            case 'R': estado = "Rentado";    break;
+            case 'M': estado = "Mantenimiento";      break;
+            case 'B': estado = "Bloqueado";  break;
+            default:  estado = "?";          break;
+        }
+        char est_str[8];
+        if (lista[i].id_estacion > 0)
+            snprintf(est_str, sizeof(est_str), "%d", lista[i].id_estacion);
+        else
+            snprintf(est_str, sizeof(est_str), "-");
+
+        printf("  %d %s %.1f %s %s\n",
+               lista[i].id_vehiculo, tipo,
+               lista[i].bateria, estado, est_str);
+    }
+
+    /* Exportar TXT */
+    printf("\n  Exportar a TXT? (s/n): ");
+    char conf[4];
+    fgets(conf, sizeof(conf), stdin);
+    if (conf[0] == 's' || conf[0] == 'S') {
+        char ruta[128];
+        generar_nombre_informe("informe_incidencias", "txt", ruta, sizeof(ruta));
+
+        FILE *f = fopen(ruta, "w");
+        if (f) {
+            int seguir = 1;
+            if (fprintf(f, "INFORME DE INCIDENCIAS - Bateria < %d%%\n", umbral) < 0) seguir = 0;
+            for (int i = 0; i < cantidad && seguir; i++) {
+                const char *tipo = (lista[i].tipo == 'B') ? "Bici" : "Patinete";
+                char est_str[8];
+                if (lista[i].id_estacion > 0)
+                    snprintf(est_str, sizeof(est_str), "%d", lista[i].id_estacion);
+                else
+                    snprintf(est_str, sizeof(est_str), "-");
+                if (fprintf(f, "%d %s %.1f %c           %s\n",
+                        lista[i].id_vehiculo, tipo,
+                        lista[i].bateria, lista[i].estado, est_str) < 0) seguir = 0;
+            }
+            if (fclose(f) != 0) seguir = 0;
+
+            if (seguir) {
+                printf("  Exportado a: %s\n", ruta);
+                LOG_I(ruta);
+            } else {
+                printf("  Error escribiendo el fichero.\n");
+            }
+        } else {
+            printf("  Error al crear el fichero.\n");
+        }
+    }
+
+    free(lista);
+    ui_pausa();
+}
 
 void menu_informes(void) {
     int opcion;
@@ -883,6 +1076,10 @@ void menu_informes(void) {
 
         switch (opcion) {
             case 1: informe_ocupacion(); break;
+            case 2: informe_ranking_uso(); break;
+            case 3: informe_financiero(); break;
+            case 4: informe_incidencias(); break;
+            case 0: break;
         }
     } while (opcion != 0);
 }
