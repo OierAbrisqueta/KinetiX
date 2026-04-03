@@ -6,6 +6,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include "menu.h"
+
+#include <time.h>
+
 #include "gestor_config.h"
 #include "gestor_log.h"
 #include "gestor_bd.h"
@@ -777,17 +780,30 @@ void menu_historico(void) {
 }
 
 /* ============================================================
- * SUBMENU INFORMES (stub — se desarrolla en Paso 7)
+ * SUBMENU INFORMES
  * ============================================================ */
 
-/*
-*Informe de Ocupación: Listado de estaciones con el porcentaje de anclajes usados vs.
-libres.
-Ranking de Uso: Vehículos con más kilómetros o tiempo de uso (útil para mantenimiento).
-Resumen Financiero: Recaudación total por día o por tipo de vehículo (Bici vs. Patinete).
-Informe de Incidencias: Listado de vehículos con batería baja (<20%) o marcados como
-"averiados"
-.*/
+static void generar_nombre_informe(const char *tipo, const char *formato, char *resultado, int max) {
+    //Se consigue el tiempo real
+    time_t ahora;
+    time(&ahora);
+    struct tm *t = localtime(&ahora);
+
+    //Se formatea la fecha
+    char fecha[11];
+    strftime(fecha, sizeof(fecha), "%Y%m%d", t);
+
+    //Se crea el texto final
+    snprintf(resultado, max, "data/reportes/%s_%s.%s", tipo, fecha, formato);
+}
+
+static void informe_ocupacion(void){}
+
+static void informe_ranking_uso(void){}
+
+static void informe_financiero(void){}
+
+static void informe_incidencias(void){}
 
 void menu_informes(void) {
     int opcion;
