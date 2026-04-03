@@ -3,6 +3,7 @@
 #include <string.h>
 #include "gestor_bd.h"
 #include "modelos.h"
+#include "informes.h"
 
 static sqlite3 *db = NULL;
 
@@ -603,7 +604,7 @@ int buscar_alquiler_por_usuario(int id_usuario, Alquiler **lista_out, int *n_out
     return SQLITE_OK;
 }
 
-int buscar_alquiler_por_fecha(char *fecha, Alquiler **lista_out, int *n_out) {
+int buscar_alquiler_por_fecha(const char *fecha, Alquiler **lista_out, int *n_out) {
     if (!db || !lista_out || !n_out) return -1;
     *lista_out = NULL;
     *n_out = 0;
@@ -656,6 +657,145 @@ int buscar_alquiler_por_fecha(char *fecha, Alquiler **lista_out, int *n_out) {
 
     sqlite3_finalize(stmt);
     *lista_out = alquileres;
+    *n_out = i;
+    return SQLITE_OK;
+}
+
+//INFORMES
+int informe_recaudacion_por_tipo(ResumenPorTipo out[2]) {
+    if (!db) return -1;
+
+    out[0].tipo = 'B';
+    out[0].num_alquileres = 0;
+    out[0].recaudacion = 0;
+
+    out[1].tipo = 'P';
+    out[1].num_alquileres = 0;
+    out[1].recaudacion = 0;
+
+    sqlite3_stmt *stmt = NULL;
+    const char *sql =
+        "SELECT V.tipo, COUNT(*), SUM(A.coste_total) "
+        "FROM ALQUILER A "
+        "JOIN VEHICULO V ON A.id_vehiculo = V.id_vehiculo "
+        "WHERE A.fecha_fin IS NOT NULL "
+        "GROUP BY V.tipo;";
+
+    int rc = sqlite3_prepare_v2(db, sql, -1, &stmt, NULL);
+    if (rc != SQLITE_OK) return -1;
+
+    while (sqlite3_step(stmt) == SQLITE_ROW) {
+        char tipo = sqlite3_column_text(stmt, 0)[0];
+        int  idx = (tipo == 'B') ? 0 : 1;
+        out[idx].num_alquileres = sqlite3_column_int(stmt, 1);
+        out[idx].recaudacion = (float)sqlite3_column_double(stmt, 2);
+    }
+    sqlite3_finalize(stmt);
+    return SQLITE_OK;
+}
+
+int informe_recaudacion_por_dia(ResumenPorDia **lista_out, int *n_out) {
+    if (!db || !lista_out || !n_out) return -1;
+    *lista_out = NULL;
+    *n_out = 0;
+
+    int total = 0;
+    sqlite3_stmt *count = NULL;
+    const char *count_sql = "SELECT COUNT(DISTINCT DATE(fecha_inicio)) FROM ALQUILER "
+                            "WHERE fecha_fin IS NOT NULL;";
+    int rc = sqlite3_prepare_v2(db, count_sql, -1, &count, NULL);
+    if (rc == SQLITE_OK) {
+        if (sqlite3_step(count) == SQLITE_ROW) total = sqlite3_column_int(count, 0);
+        sqlite3_finalize(count);
+    } else {
+        return -1;
+    }
+    if (total == 0) return SQLITE_OK;
+
+    ResumenPorDia *array = (ResumenPorDia *)malloc(total * sizeof(ResumenPorDia));
+    if (!array) {
+        printf("Error: No se ha podido reservar en la memoria\n");
+        return -1;
+    };
+
+    sqlite3_stmt *stmt = NULL;
+    const char *sql =
+        "SELECT DATE(fecha_inicio), COUNT(*), SUM(coste_total) "
+        "FROM ALQUILER "
+        "WHERE fecha_fin IS NOT NULL "
+        "GROUP BY DATE(fecha_inicio) "
+        "ORDER BY DATE(fecha_inicio) DESC;";
+
+    int rc_2 = sqlite3_prepare_v2(db, sql, -1, &stmt, NULL);
+    if (rc_2 != SQLITE_OK) {
+        free(array);
+        return -1;
+    }
+
+    int i = 0;
+    while (sqlite3_step(stmt) == SQLITE_ROW && i < total) {
+        const char* fecha = (const char*)sqlite3_column_text(stmt, 0);
+
+        if (fecha != NULL) {
+            strncpy(array[i].fecha, fecha, 10);
+            array[i].fecha[10] = '\0';
+        } else {
+            array[i].fecha[0] = '\0';
+        }
+
+        array[i].num_alquileres = sqlite3_column_int(stmt, 1);
+        array[i].recaudacion = (float)sqlite3_column_double(stmt, 2);
+
+        i++;
+    }
+
+    sqlite3_finalize(stmt);
+    *lista_out = array;
+    *n_out = i;
+    return SQLITE_OK;
+}
+
+int ranking_uso_vehiculo(UsoVehiculo **lista_out, int *n_out, int top_n) {
+    if (!db || !lista_out || !n_out) return -1;
+    *lista_out = NULL;
+    *n_out = 0;
+
+    int mostrar = (top_n > 0) ? top_n : 10;
+
+    UsoVehiculo *array = (UsoVehiculo *)malloc(mostrar * sizeof(UsoVehiculo));
+    if (!array) {
+        printf("Error: No se ha podido reservar en la memoria\n");
+        return -1;
+    };
+
+    sqlite3_stmt *stmt = NULL;
+    const char *sql =
+        "SELECT A.id_vehiculo, V.tipo, COUNT(*), "
+        "SUM((strftime('%s', A.fecha_fin) - strftime('%s', A.fecha_inicio)) / 60.0) "
+        "FROM ALQUILER A "
+        "JOIN VEHICULO V ON A.id_vehiculo = V.id_vehiculo "
+        "WHERE A.fecha_fin IS NOT NULL "
+        "GROUP BY A.id_vehiculo "
+        "ORDER BY COUNT(*) DESC "
+        "LIMIT ?;";
+
+    int rc = sqlite3_prepare_v2(db, sql, -1, &stmt, NULL);
+    if (rc != SQLITE_OK) {
+        free(array);
+        return -1;
+    };
+    sqlite3_bind_int(stmt, 1, mostrar);
+
+    int i = 0;
+    while (sqlite3_step(stmt) == SQLITE_ROW && i < mostrar) {
+        array[i].id_vehiculo = sqlite3_column_int(stmt, 0);
+        array[i].tipo = sqlite3_column_text(stmt, 1)[0];
+        array[i].num_alquileres = sqlite3_column_int(stmt, 2);
+        array[i].minutos_totales = sqlite3_column_double(stmt, 3);
+        i++;
+    }
+    sqlite3_finalize(stmt);
+    *lista_out = array;
     *n_out = i;
     return SQLITE_OK;
 }
