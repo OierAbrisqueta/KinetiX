@@ -149,7 +149,7 @@ void menu_principal(void) {
         printf("  |  1. Gestionar Estaciones                         |\n");
         printf("  |  2. Gestionar Flota de Vehiculos                 |\n");
         printf("  |  3. Gestionar Usuarios                           |\n");
-        printf("  |  4. Consultar Historico (Logs)                   |\n");
+        printf("  |  4. Consultar Historico Alquileres               |\n");
         printf("  |  5. Informes y Exportacion                       |\n");
         printf("  |  6. Configuracion del Sistema                    |\n");
         printf("  |  0. Cerrar sesion y salir                        |\n");
@@ -769,13 +769,33 @@ void menu_historico(void) {
             }
 
             case 4: {
-                log_mostrar_ultimas(20);
+                ui_limpiar();
+                printf("      ULTIMOS 20 ALQUILERES \n\n");
+                Alquiler *alquieres = NULL;
+                int cantidad = 0;
+                int rc = listar_ultimos_alquileres(20, &alquieres, &cantidad);
+                if (rc != SQLITE_OK) {
+                    printf("  Error al recuperar los ultimos alquileres. Error: %d\n", rc);
+                } else {
+                    imprimir_alquileres(alquieres, cantidad);
+                }
+                if (alquieres) free(alquieres);
                 ui_pausa();
                 break;
             }
 
             case 5: {
-                log_mostrar_ultimas(50);
+                ui_limpiar();
+                printf("      ULTIMOS 50 ALQUILERES \n\n");
+                Alquiler *alquieres = NULL;
+                int cantidad = 0;
+                int rc = listar_ultimos_alquileres(50, &alquieres, &cantidad);
+                if (rc != SQLITE_OK) {
+                    printf("  Error al recuperar los ultimos alquileres. Error: %d\n", rc);
+                } else {
+                    imprimir_alquileres(alquieres, cantidad);
+                }
+                if (alquieres) free(alquieres);
                 ui_pausa();
                 break;
             }

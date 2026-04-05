@@ -482,6 +482,54 @@ int listar_alquileres(Alquiler **lista_out, int *cantidad_out) {
     return SQLITE_OK;
 }
 
+int listar_ultimos_alquileres(int limite, Alquiler **lista_out, int *cantidad_out) {
+    if (!db || !lista_out || !cantidad_out) return -1;
+    *lista_out = NULL;
+    *cantidad_out = 0;
+    if (limite <= 0) return SQLITE_CONSTRAINT;
+
+    Alquiler *arr = (Alquiler *)malloc((size_t)limite * sizeof(Alquiler));
+    if (!arr) return SQLITE_NOMEM;
+
+    sqlite3_stmt *stmt = NULL;
+    const char *sql =
+        "SELECT id_alquiler, id_usuario, id_vehiculo, "
+        "id_estacion_origen, COALESCE(id_estacion_destino,0), "
+        "fecha_inicio, COALESCE(fecha_fin,''), coste_total "
+        "FROM ALQUILER ORDER BY fecha_inicio DESC LIMIT ?;";
+
+    int rc = sqlite3_prepare_v2(db, sql, -1, &stmt, NULL);
+    if (rc != SQLITE_OK) {
+        printf("[BD] Error preparando el listado de los ultimos alquileres: %s\n", sqlite3_errmsg(db));
+        free(arr);
+        return rc;
+    }
+    sqlite3_bind_int(stmt, 1, limite);
+
+    int i = 0;
+    while (sqlite3_step(stmt) == SQLITE_ROW && i < limite) {
+        arr[i].id_alquiler         = sqlite3_column_int(stmt, 0);
+        arr[i].id_usuario          = sqlite3_column_int(stmt, 1);
+        arr[i].id_vehiculo         = sqlite3_column_int(stmt, 2);
+        arr[i].id_estacion_origen  = sqlite3_column_int(stmt, 3);
+        arr[i].id_estacion_destino = sqlite3_column_int(stmt, 4);
+        strncpy(arr[i].fecha_inicio, (const char*)sqlite3_column_text(stmt, 5), 19);
+        strncpy(arr[i].fecha_fin,    (const char*)sqlite3_column_text(stmt, 6), 19);
+        arr[i].coste_total = (float)sqlite3_column_double(stmt, 7);
+        i++;
+    }
+    sqlite3_finalize(stmt);
+
+    if (i == 0) {
+        free(arr);
+        return SQLITE_OK;
+    }
+
+    *lista_out = arr;
+    *cantidad_out = i;
+    return SQLITE_OK;
+}
+
 int listar_vehiculos_bateria_baja(Vehiculo **lista_out, int *cantidad_out, int umbral) {
     if (!db || !lista_out || !cantidad_out) return -1;
     *lista_out = NULL; *cantidad_out = 0;

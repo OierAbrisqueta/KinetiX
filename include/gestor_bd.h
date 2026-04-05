@@ -25,6 +25,7 @@ int listar_estaciones(Estacion **lista_out, int *cantidad_out);
 int listar_vehiculos(Vehiculo  **lista_out, int *cantidad_out);
 int listar_usuarios(Usuario   **lista_out, int *cantidad_out);
 int listar_alquileres(Alquiler **lista_out, int *cantidad_out);
+int listar_ultimos_alquileres(int limite, Alquiler **lista_out, int *cantidad_out);
 int listar_vehiculos_bateria_baja(Vehiculo **lista_out, int *cantidad_out, int umbral);
 
 int buscar_estacion(int id, Estacion *out);
