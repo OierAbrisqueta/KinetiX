@@ -4,7 +4,7 @@ PRAGMA foreign_keys = ON;
 
 -- Tabla ESTACION
 CREATE TABLE ESTACION (
-                          id_estacion INTEGER PRIMARY KEY,
+                          id_estacion INTEGER PRIMARY KEY AUTOINCREMENT,
                           nombre VARCHAR(50) NOT NULL,
                           direccion VARCHAR(100),
                           coord_x REAL NOT NULL DEFAULT 0.0,
@@ -15,7 +15,7 @@ CREATE TABLE ESTACION (
 
 -- Tabla VEHICULO
 CREATE TABLE VEHICULO (
-                          id_vehiculo INTEGER PRIMARY KEY,
+                          id_vehiculo INTEGER PRIMARY KEY AUTOINCREMENT,
                           tipo VARCHAR(1) NOT NULL CHECK (tipo IN ('B', 'P')),
                           bateria FLOAT NOT NULL DEFAULT 100.0 CHECK (bateria >= 0 AND bateria <= 100),
                           estado VARCHAR(1) NOT NULL CHECK (estado IN ('D', 'R', 'M', 'B')),
@@ -25,7 +25,7 @@ CREATE TABLE VEHICULO (
 
 -- Tabla USUARIO
 CREATE TABLE USUARIO (
-                         id_usuario INTEGER PRIMARY KEY,
+                         id_usuario INTEGER PRIMARY KEY AUTOINCREMENT,
                          dni VARCHAR(9) NOT NULL UNIQUE,
                          nombre VARCHAR(50) NOT NULL,
                          contrasena VARCHAR(250) NOT NULL,

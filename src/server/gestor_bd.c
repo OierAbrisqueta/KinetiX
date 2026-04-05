@@ -39,7 +39,7 @@ void cerrar_bd(void) {
  * INSERCION
  * ============================================================ */
 
-int insertar_estacion(Estacion e) {
+int insertar_estacion(Estacion e, int *id_generado_out) {
     if (!db) return SQLITE_MISUSE;
     if (e.capacidad_max <= 0 || e.disponibilidad_actual < 0)
         return SQLITE_CONSTRAINT;
@@ -47,8 +47,8 @@ int insertar_estacion(Estacion e) {
     sqlite3_stmt *stmt = NULL;
     const char *sql =
         "INSERT INTO ESTACION "
-        "(id_estacion, nombre, direccion, coord_x, coord_y, capacidad_max, disponibilidad_actual) "
-        "VALUES (?, ?, ?, ?, ?, ?, ?);";
+        "(nombre, direccion, coord_x, coord_y, capacidad_max, disponibilidad_actual) "
+        "VALUES (?, ?, ?, ?, ?, ?);";
 
     int rc = sqlite3_prepare_v2(db, sql, -1, &stmt, NULL);
     if (rc != SQLITE_OK) {
@@ -56,13 +56,12 @@ int insertar_estacion(Estacion e) {
         return rc;
     }
 
-    sqlite3_bind_int (stmt, 1, e.id_estacion);
-    sqlite3_bind_text(stmt, 2, e.nombre,    -1, SQLITE_TRANSIENT);
-    sqlite3_bind_text(stmt, 3, e.direccion, -1, SQLITE_TRANSIENT);
-    sqlite3_bind_double(stmt, 4, (double)e.coord_x);
-    sqlite3_bind_double(stmt, 5, (double)e.coord_y);
-    sqlite3_bind_int (stmt, 6, e.capacidad_max);
-    sqlite3_bind_int (stmt, 7, e.disponibilidad_actual);
+    sqlite3_bind_text(stmt, 1, e.nombre,    -1, SQLITE_TRANSIENT);
+    sqlite3_bind_text(stmt, 2, e.direccion, -1, SQLITE_TRANSIENT);
+    sqlite3_bind_double(stmt, 3, (double)e.coord_x);
+    sqlite3_bind_double(stmt, 4, (double)e.coord_y);
+    sqlite3_bind_int (stmt, 5, e.capacidad_max);
+    sqlite3_bind_int (stmt, 6, e.disponibilidad_actual);
 
     rc = sqlite3_step(stmt);
     sqlite3_finalize(stmt);
@@ -71,17 +70,18 @@ int insertar_estacion(Estacion e) {
         printf("[BD] Error INSERT ESTACION: %s\n", sqlite3_errmsg(db));
         return rc;
     }
+    if (id_generado_out) *id_generado_out = (int)sqlite3_last_insert_rowid(db);
     return SQLITE_OK;
 }
 
-int insertar_vehiculo(Vehiculo v) {
+int insertar_vehiculo(Vehiculo v, int *id_generado_out) {
     if (!db) return SQLITE_MISUSE;
 
     sqlite3_stmt *stmt = NULL;
     const char *sql =
         "INSERT INTO VEHICULO "
-        "(id_vehiculo, tipo, bateria, estado, id_estacion) "
-        "VALUES (?, ?, ?, ?, ?);";
+        "(tipo, bateria, estado, id_estacion) "
+        "VALUES (?, ?, ?, ?);";
 
     int rc = sqlite3_prepare_v2(db, sql, -1, &stmt, NULL);
     if (rc != SQLITE_OK) {
@@ -92,15 +92,14 @@ int insertar_vehiculo(Vehiculo v) {
     char tipo_s[2]   = { v.tipo,   '\0' };
     char estado_s[2] = { v.estado, '\0' };
 
-    sqlite3_bind_int   (stmt, 1, v.id_vehiculo);
-    sqlite3_bind_text  (stmt, 2, tipo_s,   -1, SQLITE_TRANSIENT);
-    sqlite3_bind_double(stmt, 3, (double)v.bateria);
-    sqlite3_bind_text  (stmt, 4, estado_s, -1, SQLITE_TRANSIENT);
+    sqlite3_bind_text  (stmt, 1, tipo_s,   -1, SQLITE_TRANSIENT);
+    sqlite3_bind_double(stmt, 2, (double)v.bateria);
+    sqlite3_bind_text  (stmt, 3, estado_s, -1, SQLITE_TRANSIENT);
 
     if (v.id_estacion > 0)
-        sqlite3_bind_int(stmt, 5, v.id_estacion);
+        sqlite3_bind_int(stmt, 4, v.id_estacion);
     else
-        sqlite3_bind_null(stmt, 5);
+        sqlite3_bind_null(stmt, 4);
 
     rc = sqlite3_step(stmt);
     sqlite3_finalize(stmt);
@@ -109,17 +108,18 @@ int insertar_vehiculo(Vehiculo v) {
         printf("[BD] Error INSERT VEHICULO: %s\n", sqlite3_errmsg(db));
         return rc;
     }
+    if (id_generado_out) *id_generado_out = (int)sqlite3_last_insert_rowid(db);
     return SQLITE_OK;
 }
 
-int insertar_usuario(Usuario u) {
+int insertar_usuario(Usuario u, int *id_generado_out) {
     if (!db) return SQLITE_MISUSE;
 
     sqlite3_stmt *stmt = NULL;
     const char *sql =
         "INSERT INTO USUARIO "
-        "(id_usuario, dni, nombre, contrasena, saldo) "
-        "VALUES (?, ?, ?, ?, ?);";
+        "(dni, nombre, contrasena, saldo) "
+        "VALUES (?, ?, ?, ?);";
 
     int rc = sqlite3_prepare_v2(db, sql, -1, &stmt, NULL);
     if (rc != SQLITE_OK) {
@@ -127,11 +127,10 @@ int insertar_usuario(Usuario u) {
         return rc;
     }
 
-    sqlite3_bind_int   (stmt, 1, u.id_usuario);
-    sqlite3_bind_text  (stmt, 2, u.dni,       -1, SQLITE_TRANSIENT);
-    sqlite3_bind_text  (stmt, 3, u.nombre,    -1, SQLITE_TRANSIENT);
-    sqlite3_bind_text  (stmt, 4, u.contrasena,-1, SQLITE_TRANSIENT);
-    sqlite3_bind_double(stmt, 5, (double)u.saldo);
+    sqlite3_bind_text  (stmt, 1, u.dni,       -1, SQLITE_TRANSIENT);
+    sqlite3_bind_text  (stmt, 2, u.nombre,    -1, SQLITE_TRANSIENT);
+    sqlite3_bind_text  (stmt, 3, u.contrasena,-1, SQLITE_TRANSIENT);
+    sqlite3_bind_double(stmt, 4, (double)u.saldo);
 
     rc = sqlite3_step(stmt);
     sqlite3_finalize(stmt);
@@ -140,6 +139,7 @@ int insertar_usuario(Usuario u) {
         printf("[BD] Error INSERT USUARIO: %s\n", sqlite3_errmsg(db));
         return rc;
     }
+    if (id_generado_out) *id_generado_out = (int)sqlite3_last_insert_rowid(db);
     return SQLITE_OK;
 }
 

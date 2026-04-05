@@ -183,36 +183,32 @@ void menu_principal(void) {
 static void estacion_alta(void) {
     Estacion e;
     memset(&e, 0, sizeof(Estacion));
+    int id_generado = 0;
 
     ui_limpiar();
     printf("\n  --- ALTA DE ESTACION ---\n\n");
-
-    /* ID */
-    e.id_estacion = ui_leer_int("ID estacion", 1, 9999);
-    if (e.id_estacion < 0) { printf("  ID invalido.\n"); ui_pausa(); return; }
 
     ui_leer_string("Nombre",    e.nombre,    sizeof(e.nombre));
     ui_leer_string("Direccion", e.direccion, sizeof(e.direccion));
     e.coord_x = ui_leer_float("Coordenada X", -100000.0f, 100000.0f);
     e.coord_y = ui_leer_float("Coordenada Y", -100000.0f, 100000.0f);
 
-    e.capacidad_max = ui_leer_int("Capacidad maxima", 1, 200);
+    e.capacidad_max = ui_leer_int("Capacidad maxima", 1, 50);
     if (e.capacidad_max < 0) { printf("  Capacidad invalida.\n"); ui_pausa(); return; }
 
     e.disponibilidad_actual = ui_leer_int("Disponibilidad actual", 0, e.capacidad_max);
     if (e.disponibilidad_actual < 0) e.disponibilidad_actual = e.capacidad_max;
 
-    int res = insertar_estacion(e);
+    int res = insertar_estacion(e, &id_generado);
     if (res == 0) {
         char msg[128];
         snprintf(msg, sizeof(msg), "Alta estacion ID=%d nombre='%s'",
-                 e.id_estacion, e.nombre);
+                 id_generado, e.nombre);
         LOG_I(msg);
-        printf("\n  Estacion creada correctamente.\n");
+        printf("\n  Estacion creada correctamente. ID asignado: %d\n", id_generado);
     } else {
         char msg[128];
-        snprintf(msg, sizeof(msg), "Error al crear estacion ID=%d (cod=%d)",
-                 e.id_estacion, res);
+        snprintf(msg, sizeof(msg), "Error al crear estacion (cod=%d)", res);
         LOG_E(msg);
         printf("\n  Error al crear la estacion (codigo %d).\n", res);
     }
@@ -352,12 +348,10 @@ static void vehiculo_alta(void) {
     Vehiculo v;
     memset(&v, 0, sizeof(Vehiculo));
     char buf[8];
+    int id_generado = 0;
 
     ui_limpiar();
     printf("\n  --- ALTA DE VEHICULO ---\n\n");
-
-    v.id_vehiculo = ui_leer_int("ID vehiculo", 1, 9999);
-    if (v.id_vehiculo < 0) { ui_pausa(); return; }
 
     printf("  Tipo (B=Bicicleta, P=Patinete): ");
     fgets(buf, sizeof(buf), stdin);
@@ -383,13 +377,13 @@ static void vehiculo_alta(void) {
     v.id_estacion = ui_leer_int("ID estacion (0 si no tiene)", 0, 9999);
     if (v.id_estacion < 0) v.id_estacion = 0;
 
-    int res = insertar_vehiculo(v);
+    int res = insertar_vehiculo(v, &id_generado);
     if (res == 0) {
         char msg[128];
         snprintf(msg, sizeof(msg), "Alta vehiculo ID=%d tipo=%c estado=%c",
-                 v.id_vehiculo, v.tipo, v.estado);
+                 id_generado, v.tipo, v.estado);
         LOG_I(msg);
-        printf("\n  Vehiculo creado correctamente.\n");
+        printf("\n  Vehiculo creado correctamente. ID asignado: %d\n", id_generado);
     } else {
         printf("\n  Error al crear el vehiculo (codigo %d).\n", res);
     }
@@ -522,25 +516,23 @@ void menu_vehiculos(void) {
 static void usuario_alta(void) {
     Usuario u;
     memset(&u, 0, sizeof(Usuario));
+    int id_generado = 0;
 
     ui_limpiar();
     printf("\n  --- ALTA DE USUARIO ---\n\n");
-
-    u.id_usuario = ui_leer_int("ID usuario", 1, 99999);
-    if (u.id_usuario < 0) { ui_pausa(); return; }
 
     ui_leer_string("DNI (9 chars)", u.dni,        sizeof(u.dni));
     ui_leer_string("Nombre",        u.nombre,     sizeof(u.nombre));
     ui_leer_string("Contrasena",    u.contrasena, sizeof(u.contrasena));
     u.saldo = ui_leer_float("Saldo inicial (EUR)", 0.0f, 9999.0f);
 
-    int res = insertar_usuario(u);
+    int res = insertar_usuario(u, &id_generado);
     if (res == 0) {
         char msg[128];
         snprintf(msg, sizeof(msg), "Alta usuario ID=%d dni='%s'",
-                 u.id_usuario, u.dni);
+                 id_generado, u.dni);
         LOG_I(msg);
-        printf("\n  Usuario creado correctamente.\n");
+        printf("\n  Usuario creado correctamente. ID asignado: %d\n", id_generado);
     } else {
         printf("\n  Error al crear el usuario (codigo %d).\n", res);
     }
@@ -897,11 +889,9 @@ static void informe_ocupacion(void) {
         if (disponibles < 0) disponibles = 0;
         if (disponibles > capacidad) disponibles = capacidad;
 
-        int ocupados = capacidad - disponibles;
-
         //Se evita la división por 0
         float porcentaje = (capacidad > 0)
-                            ? ((float)ocupados * 100.0f / (float)capacidad) : 0.0f;
+                            ? ((float)disponibles * 100.0f / (float)capacidad) : 0.0f;
 
         if (porcentaje < 0.0f) porcentaje = 0.0f;
         if (porcentaje > 100.0f) porcentaje = 100.0f;

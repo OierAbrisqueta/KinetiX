@@ -8,9 +8,9 @@
 int  conectar_bd(const char *ruta_bd);
 void cerrar_bd(void);
 
-int insertar_estacion(Estacion e);
-int insertar_vehiculo(Vehiculo v);
-int insertar_usuario(Usuario u);
+int insertar_estacion(Estacion e, int *id_generado_out);
+int insertar_vehiculo(Vehiculo v, int *id_generado_out);
+int insertar_usuario(Usuario u, int *id_generado_out);
 int insertar_alquiler(Alquiler a);
 
 int borrar_estacion(int id);
