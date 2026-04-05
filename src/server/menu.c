@@ -784,7 +784,20 @@ void menu_historico(void) {
  * SUBMENU INFORMES
  * ============================================================ */
 
-static void generar_nombre_informe(const char *tipo, const char *formato, char *resultado, int max) {
+static int asegurar_directorio(const char *ruta) {
+    if (!ruta || ruta[0] == '\0') return 0;
+
+    char cmd[512];
+#ifdef _WIN32
+    snprintf(cmd, sizeof(cmd), "if not exist \"%s\" mkdir \"%s\" >NUL 2>&1", ruta, ruta);
+#else
+    snprintf(cmd, sizeof(cmd), "mkdir -p \"%s\" >/dev/null 2>&1", ruta);
+#endif
+
+    return (system(cmd) == 0);
+}
+
+static void generar_nombre_informe(const char *base_ruta, const char *tipo, const char *formato, char *resultado, int max) {
     //Se consigue el tiempo real
     time_t ahora;
     time(&ahora);
@@ -795,7 +808,36 @@ static void generar_nombre_informe(const char *tipo, const char *formato, char *
     strftime(fecha, sizeof(fecha), "%Y%m%d", t);
 
     //Se crea el texto final
-    snprintf(resultado, max, "data/reportes/%s_%s.%s", tipo, fecha, formato);
+    if (!base_ruta || base_ruta[0] == '\0') base_ruta = "data/reportes";
+
+    int len = (int)strlen(base_ruta);
+    int tiene_sep = (len > 0 && (base_ruta[len - 1] == '/' || base_ruta[len - 1] == '\\'));
+    snprintf(resultado, max, "%s%s%s_%s.%s",
+             base_ruta,
+             tiene_sep ? "" : "/",
+             tipo,
+             fecha,
+             formato);
+}
+
+static FILE *abrir_fichero_informe(const char *tipo, const char *formato, char *ruta, int max_ruta) {
+    const char *rutas_candidatas[3];
+    int n = 0;
+
+    if (g_config.reportes_ruta[0] != '\0') rutas_candidatas[n++] = g_config.reportes_ruta;
+    rutas_candidatas[n++] = "data/reportes";
+    rutas_candidatas[n++] = "../data/reportes";
+
+    for (int i = 0; i < n; i++) {
+        if (!asegurar_directorio(rutas_candidatas[i])) continue;
+        generar_nombre_informe(rutas_candidatas[i], tipo, formato, ruta, max_ruta);
+
+        FILE *f = fopen(ruta, "w");
+        if (f) return f;
+    }
+
+    ruta[0] = '\0';
+    return NULL;
 }
 
 static void informe_ocupacion(void) {
@@ -953,9 +995,7 @@ static void informe_financiero(void) {
     fgets(conf, sizeof(conf), stdin);
     if (conf[0] == 's' || conf[0] == 'S') {
         char ruta[128];
-        generar_nombre_informe("report_financiero", "csv", ruta, sizeof(ruta));
-
-        FILE *f = fopen(ruta, "w");
+        FILE *f = abrir_fichero_informe("report_financiero", "csv", ruta, sizeof(ruta));
         if (f) {
             int seguir = 1;
             if (fprintf(f, "Fecha,Num_Alquileres,Recaudacion_EUR\n") < 0) seguir = 0;
@@ -1024,9 +1064,7 @@ static void informe_incidencias(void) {
     fgets(conf, sizeof(conf), stdin);
     if (conf[0] == 's' || conf[0] == 'S') {
         char ruta[128];
-        generar_nombre_informe("informe_incidencias", "txt", ruta, sizeof(ruta));
-
-        FILE *f = fopen(ruta, "w");
+        FILE *f = abrir_fichero_informe("informe_incidencias", "txt", ruta, sizeof(ruta));
         if (f) {
             int seguir = 1;
             if (fprintf(f, "INFORME DE INCIDENCIAS - Bateria < %d%%\n", umbral) < 0) seguir = 0;
