@@ -7,6 +7,8 @@ CREATE TABLE ESTACION (
                           id_estacion INTEGER PRIMARY KEY,
                           nombre VARCHAR(50) NOT NULL,
                           direccion VARCHAR(100),
+                          coord_x REAL NOT NULL DEFAULT 0.0,
+                          coord_y REAL NOT NULL DEFAULT 0.0,
                           capacidad_max INTEGER NOT NULL CHECK (capacidad_max > 0),
                           disponibilidad_actual INTEGER NOT NULL CHECK (disponibilidad_actual >= 0)
 );

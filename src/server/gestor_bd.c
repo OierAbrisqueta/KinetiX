@@ -47,8 +47,8 @@ int insertar_estacion(Estacion e) {
     sqlite3_stmt *stmt = NULL;
     const char *sql =
         "INSERT INTO ESTACION "
-        "(id_estacion, nombre, direccion, capacidad_max, disponibilidad_actual) "
-        "VALUES (?, ?, ?, ?, ?);";
+        "(id_estacion, nombre, direccion, coord_x, coord_y, capacidad_max, disponibilidad_actual) "
+        "VALUES (?, ?, ?, ?, ?, ?, ?);";
 
     int rc = sqlite3_prepare_v2(db, sql, -1, &stmt, NULL);
     if (rc != SQLITE_OK) {
@@ -59,8 +59,10 @@ int insertar_estacion(Estacion e) {
     sqlite3_bind_int (stmt, 1, e.id_estacion);
     sqlite3_bind_text(stmt, 2, e.nombre,    -1, SQLITE_TRANSIENT);
     sqlite3_bind_text(stmt, 3, e.direccion, -1, SQLITE_TRANSIENT);
-    sqlite3_bind_int (stmt, 4, e.capacidad_max);
-    sqlite3_bind_int (stmt, 5, e.disponibilidad_actual);
+    sqlite3_bind_double(stmt, 4, (double)e.coord_x);
+    sqlite3_bind_double(stmt, 5, (double)e.coord_y);
+    sqlite3_bind_int (stmt, 6, e.capacidad_max);
+    sqlite3_bind_int (stmt, 7, e.disponibilidad_actual);
 
     rc = sqlite3_step(stmt);
     sqlite3_finalize(stmt);
@@ -221,7 +223,7 @@ int actualizar_estacion(Estacion e) {
     sqlite3_stmt *stmt = NULL;
     const char *sql =
         "UPDATE ESTACION "
-        "SET nombre=?, direccion=?, capacidad_max=?, disponibilidad_actual=? "
+        "SET nombre=?, direccion=?, coord_x=?, coord_y=?, capacidad_max=?, disponibilidad_actual=? "
         "WHERE id_estacion=?;";
 
     int rc = sqlite3_prepare_v2(db, sql, -1, &stmt, NULL);
@@ -229,9 +231,11 @@ int actualizar_estacion(Estacion e) {
 
     sqlite3_bind_text(stmt, 1, e.nombre,    -1, SQLITE_TRANSIENT);
     sqlite3_bind_text(stmt, 2, e.direccion, -1, SQLITE_TRANSIENT);
-    sqlite3_bind_int (stmt, 3, e.capacidad_max);
-    sqlite3_bind_int (stmt, 4, e.disponibilidad_actual);
-    sqlite3_bind_int (stmt, 5, e.id_estacion);
+    sqlite3_bind_double(stmt, 3, (double)e.coord_x);
+    sqlite3_bind_double(stmt, 4, (double)e.coord_y);
+    sqlite3_bind_int (stmt, 5, e.capacidad_max);
+    sqlite3_bind_int (stmt, 6, e.disponibilidad_actual);
+    sqlite3_bind_int (stmt, 7, e.id_estacion);
 
     rc = sqlite3_step(stmt);
     sqlite3_finalize(stmt);
@@ -336,7 +340,7 @@ int listar_estaciones(Estacion **lista_out, int *cantidad_out) {
 
     sqlite3_stmt *stmt = NULL;
     const char *sql =
-        "SELECT id_estacion, nombre, direccion, "
+        "SELECT id_estacion, nombre, direccion, coord_x, coord_y, "
         "capacidad_max, disponibilidad_actual FROM ESTACION;";
 
     rc = sqlite3_prepare_v2(db, sql, -1, &stmt, NULL);
@@ -351,8 +355,10 @@ int listar_estaciones(Estacion **lista_out, int *cantidad_out) {
         arr[i].id_estacion           = sqlite3_column_int(stmt, 0);
         strncpy(arr[i].nombre,    (const char*)sqlite3_column_text(stmt, 1), 50);
         strncpy(arr[i].direccion, (const char*)sqlite3_column_text(stmt, 2), 100);
-        arr[i].capacidad_max         = sqlite3_column_int(stmt, 3);
-        arr[i].disponibilidad_actual = sqlite3_column_int(stmt, 4);
+        arr[i].coord_x               = (float)sqlite3_column_double(stmt, 3);
+        arr[i].coord_y               = (float)sqlite3_column_double(stmt, 4);
+        arr[i].capacidad_max         = sqlite3_column_int(stmt, 5);
+        arr[i].disponibilidad_actual = sqlite3_column_int(stmt, 6);
         i++;
     }
     sqlite3_finalize(stmt);
@@ -519,7 +525,7 @@ int buscar_estacion(int id, Estacion *out) {
     if (!db || !out) return -1;
     sqlite3_stmt *stmt = NULL;
     const char *sql =
-        "SELECT id_estacion, nombre, direccion, capacidad_max, disponibilidad_actual "
+        "SELECT id_estacion, nombre, direccion, coord_x, coord_y, capacidad_max, disponibilidad_actual "
         "FROM ESTACION WHERE id_estacion = ?;";
     if (sqlite3_prepare_v2(db, sql, -1, &stmt, NULL) != SQLITE_OK) return -1;
     sqlite3_bind_int(stmt, 1, id);
@@ -528,8 +534,10 @@ int buscar_estacion(int id, Estacion *out) {
         out->id_estacion           = sqlite3_column_int(stmt, 0);
         strncpy(out->nombre,    (const char*)sqlite3_column_text(stmt, 1), 50);
         strncpy(out->direccion, (const char*)sqlite3_column_text(stmt, 2), 100);
-        out->capacidad_max         = sqlite3_column_int(stmt, 3);
-        out->disponibilidad_actual = sqlite3_column_int(stmt, 4);
+        out->coord_x               = (float)sqlite3_column_double(stmt, 3);
+        out->coord_y               = (float)sqlite3_column_double(stmt, 4);
+        out->capacidad_max         = sqlite3_column_int(stmt, 5);
+        out->disponibilidad_actual = sqlite3_column_int(stmt, 6);
         rc = 0;
     }
     sqlite3_finalize(stmt);

@@ -5,6 +5,8 @@ typedef struct {
     int id_estacion;
     char nombre[51];
     char direccion[101];
+    float coord_x;
+    float coord_y;
     int capacidad_max;
     int disponibilidad_actual;
 } Estacion;

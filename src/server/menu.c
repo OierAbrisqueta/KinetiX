@@ -183,7 +183,6 @@ void menu_principal(void) {
 static void estacion_alta(void) {
     Estacion e;
     memset(&e, 0, sizeof(Estacion));
-    char buf[16];
 
     ui_limpiar();
     printf("\n  --- ALTA DE ESTACION ---\n\n");
@@ -194,6 +193,8 @@ static void estacion_alta(void) {
 
     ui_leer_string("Nombre",    e.nombre,    sizeof(e.nombre));
     ui_leer_string("Direccion", e.direccion, sizeof(e.direccion));
+    e.coord_x = ui_leer_float("Coordenada X", -100000.0f, 100000.0f);
+    e.coord_y = ui_leer_float("Coordenada Y", -100000.0f, 100000.0f);
 
     e.capacidad_max = ui_leer_int("Capacidad maxima", 1, 200);
     if (e.capacidad_max < 0) { printf("  Capacidad invalida.\n"); ui_pausa(); return; }
@@ -259,6 +260,8 @@ static void estacion_modificar(void) {
 
     ui_leer_string("Nuevo nombre",    e.nombre,    sizeof(e.nombre));
     ui_leer_string("Nueva direccion", e.direccion, sizeof(e.direccion));
+    e.coord_x = ui_leer_float("Nueva coordenada X", -100000.0f, 100000.0f);
+    e.coord_y = ui_leer_float("Nueva coordenada Y", -100000.0f, 100000.0f);
     e.capacidad_max         = ui_leer_int("Nueva capacidad maxima", 1, 200);
     e.disponibilidad_actual = ui_leer_int("Nueva disponibilidad", 0, e.capacidad_max > 0 ? e.capacidad_max : 200);
 
@@ -296,13 +299,15 @@ static void estacion_listado(void) {
         return;
     }
 
-    printf("ID Nombre Direccion Capacidad Max Disponibles\n");
+    printf("ID Nombre Direccion CoordX CoordY CapacidadMax Disponibles\n");
 
     for (int i = 0; i < n; i++) {
-        printf("%d %s %s %d %d\n",
+        printf("%d %s %s %.2f %.2f %d %d\n",
                estaciones[i].id_estacion,
                estaciones[i].nombre,
                estaciones[i].direccion,
+               estaciones[i].coord_x,
+               estaciones[i].coord_y,
                estaciones[i].capacidad_max,
                estaciones[i].disponibilidad_actual);
     }

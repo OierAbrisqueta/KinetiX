@@ -4,12 +4,12 @@
 -- =============================================
 
 -- ESTACIONES
-INSERT INTO ESTACION (id_estacion, nombre, direccion, capacidad_max, disponibilidad_actual) VALUES
-                                                                                                (1, 'Estación Centro',      'Calle Mayor 1, Madrid',          20, 14),
-                                                                                                (2, 'Estación Norte',       'Av. de la Paz 45, Madrid',       15, 10),
-                                                                                                (3, 'Estación Sur',         'Calle Granada 88, Madrid',       10,  6),
-                                                                                                (4, 'Estación Este',        'Paseo del Prado 200, Madrid',    25, 20),
-                                                                                                (5, 'Estación Aeropuerto',  'Terminal T4, Barajas, Madrid',   30,  5);
+INSERT INTO ESTACION (id_estacion, nombre, direccion, coord_x, coord_y, capacidad_max, disponibilidad_actual) VALUES
+                                                                                                (1, 'Estación Centro',      'Calle Mayor 1, Madrid',         100.50, 200.25, 20, 14),
+                                                                                                (2, 'Estación Norte',       'Av. de la Paz 45, Madrid',      120.00, 320.10, 15, 10),
+                                                                                                (3, 'Estación Sur',         'Calle Granada 88, Madrid',       80.75, 110.40, 10,  6),
+                                                                                                (4, 'Estación Este',        'Paseo del Prado 200, Madrid',   240.30, 175.95, 25, 20),
+                                                                                                (5, 'Estación Aeropuerto',  'Terminal T4, Barajas, Madrid',  410.20, 500.00, 30,  5);
 
 -- =============================================
 -- USUARIOS
