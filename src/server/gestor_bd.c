@@ -13,7 +13,7 @@ static sqlite3 *db = NULL;
 
 int conectar_bd(const char *ruta_bd) {
     const char *ruta = (ruta_bd && strlen(ruta_bd) > 0)
-                       ? ruta_bd : "data/kinetix.db";
+                       ? ruta_bd : "data/kinetix.sqlite";
 
     int rc = sqlite3_open(ruta, &db);
     if (rc != SQLITE_OK) {

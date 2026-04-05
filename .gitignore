@@ -5,7 +5,7 @@ bin/
 KinetiX_Server
 KinetiX_Client
 
-data/*.db
+data/*.sqlite
 data/*.log
 data/*.csv
 data/*.txt
