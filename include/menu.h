@@ -20,6 +20,5 @@ void  ui_pausa(void);
 void  ui_separador(void);
 int   ui_leer_int(const char *prompt, int min, int max);
 void  ui_leer_string(const char *prompt, char *buf, int max_len);
-float ui_leer_float(const char *prompt, float min, float max);
 
 #endif

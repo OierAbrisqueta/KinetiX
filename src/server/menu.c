@@ -1,10 +1,7 @@
-//
-// Created by jon.i on 26/03/2026.
-//
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <ctype.h>
 #include "menu.h"
 
 #include <time.h>
@@ -58,7 +55,84 @@ static int esta_vacio(const char *s) {
     return 1;
 }
 
-static int ui_leer_float_en_rango(const char *mensaje, float min, float max) {
+static void mayusculas(char *s) {
+    if (!s) return;
+    for (int i = 0; s[i] != '\0'; i++) {
+        s[i] = (char)toupper((unsigned char)s[i]);
+    }
+}
+
+static void ui_leer_string_no_vacio(const char *mensaje, char *buf, int max) {
+    do {
+        ui_leer_string(mensaje, buf, max);
+        if (esta_vacio(buf)) {
+            printf("  Error: No puedes dejarlo vacio.\n");
+        }
+    } while (esta_vacio(buf));
+}
+
+static void leer_dni(char *buf, int max) {
+    while (1) {
+        ui_leer_string("DNI (9 chars)", buf, max);
+
+        if (esta_vacio(buf)) {
+            printf("  Error: El DNI no puede estar vacio.\n");
+            continue;
+        }
+
+        int len = (int)strlen(buf);
+        if (len != 9) {
+            printf("  Error: El DNI debe tener exactamente 9 caracteres.\n");
+            continue;
+        }
+
+        int valido = 1;
+        for (int i = 0; i < len; i++) {
+            if (!isalnum((unsigned char)buf[i])) {
+                valido = 0;
+                break;
+            }
+        }
+
+        if (!valido) {
+            printf("  Error: El DNI solo puede contener letras y numeros.\n");
+            continue;
+        }
+
+        mayusculas(buf);
+        return;
+    }
+}
+
+static int ui_leer_opcion_char(const char *prompt, const char *validos, char *out) {
+    char buf[64];
+
+    while (1) {
+        printf("  %s", prompt);
+
+        if (!fgets(buf, sizeof(buf), stdin)) {
+            return 0;
+        }
+
+        if (strchr(buf, '\n') == NULL) limpiar_buffer_teclado();
+
+        if (esta_vacio(buf)) {
+            printf("  Error: No puedes dejarlo vacio.\n");
+            continue;
+        }
+
+        char c = (char)toupper((unsigned char)buf[0]);
+        if (!strchr(validos, c)) {
+            printf("  Error: Opcion invalida. Valores permitidos: %s\n", validos);
+            continue;
+        }
+
+        *out = c;
+        return 1;
+    }
+}
+
+static int ui_leer_float_en_rango(const char *mensaje, float min, float max, float *valor_out) {
     char buf[64];
     float valor;
     char extra;
@@ -66,7 +140,7 @@ static int ui_leer_float_en_rango(const char *mensaje, float min, float max) {
     while (1) {
         printf("  %s [%.2f - %.2f]: ", mensaje, min, max);
 
-        //En caso de error se devuelve 0
+        //En caso de error de lectura se devuelve 0
         if (!fgets(buf, sizeof(buf), stdin)) {
             return 0;
         }
@@ -97,7 +171,8 @@ static int ui_leer_float_en_rango(const char *mensaje, float min, float max) {
             continue;
         }
 
-        return valor;
+        *valor_out = valor;
+        return 1;
     }
 }
 
@@ -156,17 +231,6 @@ void ui_leer_string(const char *prompt, char *buf, int max_len) {
     } else if (max_len > 0) {
         buf[0] = '\0';
     }
-}
-
-float ui_leer_float(const char *prompt, float min, float max) {
-    char  buf[64];
-    float val;
-
-    printf("  %s [%.2f-%.2f]: ", prompt, min, max);
-    if (!fgets(buf, sizeof(buf), stdin)) return min;
-    if (sscanf(buf, "%f", &val) != 1) return min;
-    if (val < min || val > max) return min;
-    return val;
 }
 
 /* ============================================================
@@ -292,20 +356,18 @@ static void estacion_alta(void) {
 
     ui_leer_string("Direccion", e.direccion, sizeof(e.direccion));
 
-    float coord_x = ui_leer_float_en_rango("Coordenada X", -100000.0f, 100000.0f);
-
-    if (!coord_x) {
-        printf("  Coordenada X invalida.\n");
+    float coord_x;
+    if (!ui_leer_float_en_rango("Coordenada X", -100000.0f, 100000.0f, &coord_x)) {
+        printf("  Error desconocido al insertar la coordenada.\n");
         ui_pausa();
         return;
     }
 
     e.coord_x = coord_x;
 
-    float coord_y = ui_leer_float_en_rango("Coordenada X", -100000.0f, 100000.0f);
-
-    if (!coord_y) {
-        printf("  Coordenada Y invalida.\n");
+    float coord_y;
+    if (!ui_leer_float_en_rango("Coordenada Y", -100000.0f, 100000.0f, &coord_y)) {
+        printf("  Error desconocido al insertar la coordenada.\n");
         ui_pausa();
         return;
     }
@@ -383,20 +445,18 @@ static void estacion_modificar(void) {
 
     ui_leer_string("Nueva direccion", e.direccion, sizeof(e.direccion));
 
-    float coord_x = ui_leer_float_en_rango("Coordenada X", -100000.0f, 100000.0f);
-
-    if (!coord_x) {
-        printf("  Coordenada X invalida.\n");
+    float coord_x;
+    if (!ui_leer_float_en_rango("Coordenada X", -100000.0f, 100000.0f, &coord_x)) {
+        printf("  Error desconocido al insertar la coordenada.\n");
         ui_pausa();
         return;
     }
 
     e.coord_x = coord_x;
 
-    float coord_y = ui_leer_float_en_rango("Coordenada X", -100000.0f, 100000.0f);
-
-    if (!coord_y) {
-        printf("  Coordenada Y invalida.\n");
+    float coord_y;
+    if (!ui_leer_float_en_rango("Coordenada Y", -100000.0f, 100000.0f, &coord_y)) {
+        printf("  Error desconocido al insertar la coordenada.\n");
         ui_pausa();
         return;
     }
@@ -497,36 +557,34 @@ void menu_estaciones(void) {
 static void vehiculo_alta(void) {
     Vehiculo v;
     memset(&v, 0, sizeof(Vehiculo));
-    char buf[8];
     int id_generado = 0;
 
     ui_limpiar();
     printf("\n  --- Alta de vehículo ---\n");
     printf("  ................................................\n\n");
 
-    printf("  Tipo (B=Bicicleta, P=Patinete): ");
-    fgets(buf, sizeof(buf), stdin);
-    v.tipo = (buf[0] == 'b') ? 'B' : (buf[0] == 'p' ? 'P' : buf[0]);
-    if (v.tipo != 'B' && v.tipo != 'P') {
-        printf("  Tipo invalido. Use B o P.\n");
+    if (!ui_leer_opcion_char("Tipo (B=Bicicleta, P=Patinete): ", "BP", &v.tipo)) {
+        printf("  Error al leer el tipo de vehiculo.\n");
         ui_pausa();
         return;
     }
 
-    float bat = ui_leer_float("Bateria (%)", 0.0f, 100.0f);
+    float bat;
+    if (!ui_leer_float_en_rango("Bateria (%)", 0.0f, 100.0f, &bat)) {
+        printf("  Error desconocido al insertar la bateria.\n");
+        ui_pausa();
+        return;
+    }
+
     v.bateria = bat;
 
-    printf("  Estado (D=Disponible, R=Reservado, M=Mantenimiento, B=Bloqueado): ");
-    fgets(buf, sizeof(buf), stdin);
-    v.estado = buf[0];
-    if (v.estado != 'D' && v.estado != 'R' && v.estado != 'M' && v.estado != 'B') {
-        printf("  Estado invalido.\n");
+    if (!ui_leer_opcion_char("Estado (D=Disponible, R=Reservado, M=Mantenimiento, B=Bloqueado): ", "DRMB", &v.estado)) {
+        printf("  Error al leer el estado del vehiculo.\n");
         ui_pausa();
         return;
     }
 
     v.id_estacion = ui_leer_int("ID estacion (0 si no tiene)", 0, 9999);
-    if (v.id_estacion < 0) v.id_estacion = 0;
 
     int res = insertar_vehiculo(v, &id_generado);
     if (res == 0) {
@@ -568,20 +626,30 @@ static void vehiculo_modificar(void) {
 
     Vehiculo v;
     memset(&v, 0, sizeof(Vehiculo));
-    char buf[8];
 
     v.id_vehiculo = ui_leer_int("ID del vehiculo a modificar", 1, 9999);
     if (v.id_vehiculo < 0) { ui_pausa(); return; }
 
-    printf("  Nuevo tipo (B/P): ");
-    fgets(buf, sizeof(buf), stdin);
-    v.tipo = buf[0];
+    if (!ui_leer_opcion_char("Nuevo tipo (B/P): ", "BP", &v.tipo)) {
+        printf("  Error al leer el tipo de vehiculo.\n");
+        ui_pausa();
+        return;
+    }
 
-    v.bateria = ui_leer_float("Nueva bateria (%)", 0.0f, 100.0f);
+    float bat;
+    if (!ui_leer_float_en_rango("Bateria (%)", 0.0f, 100.0f, &bat)) {
+        printf("  Error desconocido al insertar la bateria.\n");
+        ui_pausa();
+        return;
+    }
 
-    printf("  Nuevo estado (D/R/M/B): ");
-    fgets(buf, sizeof(buf), stdin);
-    v.estado = buf[0];
+    v.bateria = bat;
+
+    if (!ui_leer_opcion_char("Nuevo estado (D/R/M/B): ", "DRMB", &v.estado)) {
+        printf("  Error al leer el estado del vehiculo.\n");
+        ui_pausa();
+        return;
+    }
 
     v.id_estacion = ui_leer_int("Nuevo ID estacion (0 si ninguna)", 0, 9999);
 
@@ -681,10 +749,18 @@ static void usuario_alta(void) {
     printf("\n  --- Alta de usuario ---\n");
     printf("  ................................................\n\n");
 
-    ui_leer_string("DNI (9 chars)", u.dni,        sizeof(u.dni));
-    ui_leer_string("Nombre",        u.nombre,     sizeof(u.nombre));
-    ui_leer_string("Contrasena",    u.contrasena, sizeof(u.contrasena));
-    u.saldo = ui_leer_float("Saldo inicial (EUR)", 0.0f, 9999.0f);
+    leer_dni(u.dni, sizeof(u.dni));
+    ui_leer_string_no_vacio("Nombre", u.nombre, sizeof(u.nombre));
+    ui_leer_string_no_vacio("Contrasena", u.contrasena, sizeof(u.contrasena));
+
+    float saldo;
+    if (!ui_leer_float_en_rango("Saldo inicial (EUR)", 0.0f, 9999.0f, &saldo)) {
+        printf("  Error desconocido al insertar el saldo.\n");
+        ui_pausa();
+        return;
+    }
+
+    u.saldo = saldo;
 
     int res = insertar_usuario(u, &id_generado);
     if (res == 0) {
@@ -730,10 +806,18 @@ static void usuario_modificar(void) {
     u.id_usuario = ui_leer_int("ID del usuario a modificar", 1, 99999);
     if (u.id_usuario < 0) { ui_pausa(); return; }
 
-    ui_leer_string("Nuevo DNI",       u.dni,        sizeof(u.dni));
-    ui_leer_string("Nuevo nombre",    u.nombre,     sizeof(u.nombre));
-    ui_leer_string("Nueva contrasena",u.contrasena, sizeof(u.contrasena));
-    u.saldo = ui_leer_float("Nuevo saldo (EUR)", 0.0f, 9999.0f);
+    leer_dni(u.dni, sizeof(u.dni));
+    ui_leer_string_no_vacio("Nuevo nombre", u.nombre, sizeof(u.nombre));
+    ui_leer_string_no_vacio("Nueva contrasena", u.contrasena, sizeof(u.contrasena));
+
+    float saldo;
+    if (!ui_leer_float_en_rango("Saldo inicial (EUR)", 0.0f, 9999.0f, &saldo)) {
+        printf("  Error desconocido al insertar el saldo.\n");
+        ui_pausa();
+        return;
+    }
+
+    u.saldo = saldo;
 
     int res = actualizar_usuario(u);
     if (res == 0) {
