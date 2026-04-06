@@ -87,15 +87,17 @@ static void leer_dni(char *buf, int max) {
         }
 
         int valido = 1;
-        for (int i = 0; i < len; i++) {
-            if (!isalnum((unsigned char)buf[i])) {
+        for (int i = 0; i < 8; i++) {
+            if (!isdigit((unsigned char)buf[i])) {
                 valido = 0;
                 break;
             }
         }
 
+        if (!isalpha((unsigned char)buf[8])) valido = 0;
+
         if (!valido) {
-            printf("  Error: El DNI solo puede contener letras y numeros.\n");
+            printf("  Error: El formato del dni es incorrecto.\n");
             continue;
         }
 
@@ -104,7 +106,63 @@ static void leer_dni(char *buf, int max) {
     }
 }
 
-static int ui_leer_opcion_char(const char *prompt, const char *validos, char *out) {
+static void leer_nie(char *buf, int max) {
+    while (1) {
+        ui_leer_string("NIE ", buf, max);
+
+        if (esta_vacio(buf)) {
+            printf("  Error: El NIE no puede estar vacio.\n");
+            continue;
+        }
+
+        int len = (int)strlen(buf);
+        if (len != 9) {
+            printf("  Error: El NIE debe tener exactamente 9 caracteres.\n");
+            continue;
+        }
+
+        mayusculas(buf);
+
+        //El primer caracter debe de ser x, y o z
+        if (buf[0] != 'X' && buf[0] != 'Y' && buf[0] != 'Z') {
+            printf("  Error: El primer caracter debe de ser x, y o z.\n");
+            continue;
+        }
+
+        int valido = 1;
+        for (int i = 1; i < 8; i++) {
+            if (!isdigit((unsigned char)buf[i])) {
+                valido = 0;
+                break;
+            }
+        }
+
+        if (!isalpha((unsigned char)buf[8])) valido = 0;
+
+        if (!valido) {
+            printf("  Error: El formato del NIE es incorrecto.\n");
+            continue;
+        }
+
+        return;
+    }
+}
+
+static void dni_o_nie(char *buf, int max) {
+    char documento;
+
+    //Se pregunta que tipo de documento tiene el usuario
+    if (ui_leer_opcion_char("Tipo de documento (D: DNI o N: NIE): ", "DN", &documento)) {
+        //En función del tipo de documento se redirige a la funcion correspondiente
+        if (documento == 'D') {
+            leer_dni(buf, max);
+        } else if (documento == 'N') {
+            leer_nie(buf, max);
+        }
+    }
+}
+
+int ui_leer_opcion_char(const char *prompt, const char *validos, char *out) {
     char buf[64];
 
     while (1) {
@@ -749,7 +807,7 @@ static void usuario_alta(void) {
     printf("\n  --- Alta de usuario ---\n");
     printf("  ................................................\n\n");
 
-    leer_dni(u.dni, sizeof(u.dni));
+    dni_o_nie(u.dni, sizeof(u.dni));
     ui_leer_string_no_vacio("Nombre", u.nombre, sizeof(u.nombre));
     ui_leer_string_no_vacio("Contrasena", u.contrasena, sizeof(u.contrasena));
 
@@ -806,7 +864,7 @@ static void usuario_modificar(void) {
     u.id_usuario = ui_leer_int("ID del usuario a modificar", 1, 99999);
     if (u.id_usuario < 0) { ui_pausa(); return; }
 
-    leer_dni(u.dni, sizeof(u.dni));
+    dni_o_nie(u.dni, sizeof(u.dni));
     ui_leer_string_no_vacio("Nuevo nombre", u.nombre, sizeof(u.nombre));
     ui_leer_string_no_vacio("Nueva contrasena", u.contrasena, sizeof(u.contrasena));
 
