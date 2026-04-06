@@ -32,14 +32,11 @@ void ui_limpiar(void) {
 }
 
 void ui_pausa(void) {
+    printf("\n  ................................................\n");
     printf("\n  Pulse Enter para continuar...");
     /* Limpiar buffer antes de esperar */
     int c;
     while ((c = getchar()) != '\n' && c != EOF);
-}
-
-void ui_separador(void) {
-    printf("  +--------------------------------------------------+\n");
 }
 
 int ui_leer_int(const char *prompt, int min, int max) {
@@ -58,7 +55,7 @@ int ui_leer_int(const char *prompt, int min, int max) {
 }
 
 void ui_leer_string(const char *prompt, char *buf, int max_len) {
-    printf("  %s: ", prompt);
+    printf("  %s:  ", prompt);
     if (fgets(buf, max_len, stdin)) {
         int len = (int)strlen(buf);
         if (len > 0 && buf[len-1] == '\n') buf[len-1] = '\0';
@@ -81,15 +78,14 @@ float ui_leer_float(const char *prompt, float min, float max) {
  * ============================================================ */
 
 void menu_banner(void) {
-    ui_limpiar();
     printf("\n");
-    printf("  ##################################################\n");
-    printf("  ##                                              ##\n");
-    printf("  ##   K I N E T I X  -  Gestion de Flota        ##\n");
-    printf("  ##        Herramienta de Administracion         ##\n");
-    printf("  ##                       Servidor Local         ##\n");
-    printf("  ##                                              ##\n");
-    printf("  ##################################################\n");
+    printf("  ================================================\n");
+    printf("\n");
+    printf("    K I N E T I X\n");
+    printf("\n");
+    printf("    Gestion de Flota  .  Herramienta de Administracion\n");
+    printf("\n");
+    printf("  ================================================\n");
     printf("\n");
 }
 
@@ -99,13 +95,14 @@ int menu_autenticar(void) {
     int  intentos = 3;
 
     while (intentos > 0) {
+        ui_limpiar();
         menu_banner();
         printf("  Acceso restringido. Identifiquese.\n\n");
 
-        ui_leer_string("Usuario", usuario, sizeof(usuario));
+        ui_leer_string("Usuario ", usuario, sizeof(usuario));
         /* Ocultar la clave en consola no es portable en C puro,
            se lee normal pero se podria mejorar con termios en Linux */
-        ui_leer_string("Clave  ", clave, sizeof(clave));
+        ui_leer_string("Clave ", clave, sizeof(clave));
 
         if (strcmp(usuario, g_config.admin_usuario) == 0 &&
             strcmp(clave,   g_config.admin_clave)   == 0) {
@@ -143,17 +140,17 @@ void menu_principal(void) {
     do {
         ui_limpiar();
         menu_banner();
-        ui_separador();
-        printf("  |         MENU PRINCIPAL - ADMINISTRADOR          |\n");
-        ui_separador();
-        printf("  |  1. Gestionar Estaciones                         |\n");
-        printf("  |  2. Gestionar Flota de Vehiculos                 |\n");
-        printf("  |  3. Gestionar Usuarios                           |\n");
-        printf("  |  4. Consultar Historico Alquileres               |\n");
-        printf("  |  5. Informes y Exportacion                       |\n");
-        printf("  |  6. Configuracion del Sistema                    |\n");
-        printf("  |  0. Cerrar sesion y salir                        |\n");
-        ui_separador();
+        printf("    Menu Principal\n");
+        printf("  ................................................\n");
+        printf("    [ 1 ]  Gestionar Estaciones\n");
+        printf("    [ 2 ]  Gestionar Flota de Vehiculos\n");
+        printf("    [ 3 ]  Gestionar Usuarios\n");
+        printf("    [ 4 ]  Historico de Alquileres\n");
+        printf("    [ 5 ]  Informes y Exportacion\n");
+        printf("    [ 6 ]  Configuracion del Sistema\n");
+        printf("  ................................................\n");
+        printf("    [ 0 ]  Cerrar sesion\n");
+        printf("\n");
 
         opcion = ui_leer_int("Seleccione opcion", 0, 6);
 
@@ -166,7 +163,8 @@ void menu_principal(void) {
             case 6: menu_configuracion();  break;
             case 0:
                 LOG_AC("Sesion cerrada por el administrador.");
-                printf("\n  Hasta pronto.\n\n");
+                printf("\n  ................................................\n");
+                printf("  Hasta pronto.\n\n");
                 break;
             default:
                 printf("  Opcion no valida.\n");
@@ -186,7 +184,8 @@ static void estacion_alta(void) {
     int id_generado = 0;
 
     ui_limpiar();
-    printf("\n  --- ALTA DE ESTACION ---\n\n");
+    printf("\n  --- Alta de estacion ---\n");
+    printf("  ................................................\n\n");
 
     ui_leer_string("Nombre",    e.nombre,    sizeof(e.nombre));
     ui_leer_string("Direccion", e.direccion, sizeof(e.direccion));
@@ -217,8 +216,8 @@ static void estacion_alta(void) {
 
 static void estacion_baja(void) {
     ui_limpiar();
-    printf("\n  --- BAJA DE ESTACION ---\n\n");
-
+    printf("\n  --- Baja de estacion ---\n");
+    printf("  ................................................\n\n");
     int id = ui_leer_int("ID de la estacion a eliminar", 1, 9999);
     if (id < 0) { ui_pausa(); return; }
 
@@ -246,7 +245,8 @@ static void estacion_baja(void) {
 
 static void estacion_modificar(void) {
     ui_limpiar();
-    printf("\n  --- MODIFICAR ESTACION ---\n\n");
+    printf("\n  --- Modificar estacion ---\n");
+    printf("  ................................................\n\n");
 
     Estacion e;
     memset(&e, 0, sizeof(Estacion));
@@ -275,7 +275,6 @@ static void estacion_modificar(void) {
 
 static void estacion_listado(void) {
     ui_limpiar();
-    printf("\n  --- LISTADO DE ESTACIONES ---\n\n");
 
     Estacion *estaciones = NULL;
     int n = 0;
@@ -295,10 +294,14 @@ static void estacion_listado(void) {
         return;
     }
 
-    printf("ID Nombre Direccion CoordX CoordY CapacidadMax Disponibles\n");
+    printf("\n  --- Listado de estaciones ---\n");
+    printf("  ................................................\n\n");
+    printf("  %-6s  %-20s  %-20s  %-8s  %-8s  %-5s  %s\n",
+           "ID", "Nombre", "Direccion", "CoordX", "CoordY", "Cap.", "Disp.");
+    printf("  ------  --------------------  --------------------  --------  --------  -----  -----\n");
 
     for (int i = 0; i < n; i++) {
-        printf("%d %s %s %.2f %.2f %d %d\n",
+        printf("  %-6d  %-20s  %-20s  %-8.2f  %-8.2f  %-5d  %d\n",
                estaciones[i].id_estacion,
                estaciones[i].nombre,
                estaciones[i].direccion,
@@ -308,7 +311,8 @@ static void estacion_listado(void) {
                estaciones[i].disponibilidad_actual);
     }
 
-    printf("Total: %d estaciones.\n", n);
+    printf("  ................................................\n");
+    printf("  Total: %d estaciones.\n", n);
     free(estaciones);
     ui_pausa();
 }
@@ -317,15 +321,16 @@ void menu_estaciones(void) {
     int opcion;
     do {
         ui_limpiar();
-        ui_separador();
-        printf("  |           GESTION DE ESTACIONES                 |\n");
-        ui_separador();
-        printf("  |  1. Alta de estacion                             |\n");
-        printf("  |  2. Baja de estacion                             |\n");
-        printf("  |  3. Modificar estacion                           |\n");
-        printf("  |  4. Listar estaciones                            |\n");
-        printf("  |  0. Volver al menu principal                     |\n");
-        ui_separador();
+        menu_banner();
+        printf("    Estaciones\n");
+        printf("  ................................................\n");
+        printf("    [ 1 ]  Alta de estacion\n");
+        printf("    [ 2 ]  Baja de estacion\n");
+        printf("    [ 3 ]  Modificar estacion\n");
+        printf("    [ 4 ]  Listar estaciones\n");
+        printf("  ................................................\n");
+        printf("    [ 0 ]  Volver al menu principal\n");
+        printf("\n");
 
         opcion = ui_leer_int("Seleccione opcion", 0, 4);
 
@@ -351,7 +356,8 @@ static void vehiculo_alta(void) {
     int id_generado = 0;
 
     ui_limpiar();
-    printf("\n  --- ALTA DE VEHICULO ---\n\n");
+    printf("\n  --- Alta de vehículo ---\n");
+    printf("  ................................................\n\n");
 
     printf("  Tipo (B=Bicicleta, P=Patinete): ");
     fgets(buf, sizeof(buf), stdin);
@@ -392,7 +398,8 @@ static void vehiculo_alta(void) {
 
 static void vehiculo_baja(void) {
     ui_limpiar();
-    printf("\n  --- BAJA DE VEHICULO ---\n\n");
+    printf("\n  --- Baja de vehículo ---\n");
+    printf("  ................................................\n\n");
 
     int id = ui_leer_int("ID del vehiculo a dar de baja", 1, 9999);
     if (id < 0) { ui_pausa(); return; }
@@ -411,7 +418,8 @@ static void vehiculo_baja(void) {
 
 static void vehiculo_modificar(void) {
     ui_limpiar();
-    printf("\n  --- MODIFICAR VEHICULO ---\n\n");
+    printf("\n  --- Modificar vehículo ---\n");
+    printf("  ................................................\n\n");
 
     Vehiculo v;
     memset(&v, 0, sizeof(Vehiculo));
@@ -446,7 +454,6 @@ static void vehiculo_modificar(void) {
 
 static void vehiculo_listado(void) {
     ui_limpiar();
-    printf("\n  --- LISTADO DE VEHICULOS ---\n\n");
 
     Vehiculo *vehiculos = NULL;
     int n = 0;
@@ -466,18 +473,24 @@ static void vehiculo_listado(void) {
         return;
     }
 
-    printf("ID Tipo Bateria id_estacion estado\n");
+    printf("\n  --- Listado de vehiculos ---\n");
+    printf("  ................................................\n\n");
+    printf("  %-6s  %-10s  %-10s  %-12s  %s\n",
+           "ID", "Tipo", "Bateria", "Estacion", "Estado");
+    printf("  ------  ----------  ----------  ------------  ------\n");
 
     for (int i = 0; i < n; i++) {
-        printf("%d %c %f %d %c\n",
+        const char *tipo = (vehiculos[i].tipo == 'B') ? "Bicicleta" : "Patinete";
+        printf("  %-6d  %-10s  %-9.1f%%  %-12d  %c\n",
                vehiculos[i].id_vehiculo,
-               vehiculos[i].tipo,
+               tipo,
                vehiculos[i].bateria,
                vehiculos[i].id_estacion,
                vehiculos[i].estado);
     }
 
-    printf("Total: %d vehiculos.\n", n);
+    printf("  ................................................\n");
+    printf("  Total: %d vehiculos.\n", n);
     free(vehiculos);
     ui_pausa();
 }
@@ -486,15 +499,16 @@ void menu_vehiculos(void) {
     int opcion;
     do {
         ui_limpiar();
-        ui_separador();
-        printf("  |         GESTION DE FLOTA DE VEHICULOS           |\n");
-        ui_separador();
-        printf("  |  1. Alta de vehiculo                             |\n");
-        printf("  |  2. Baja de vehiculo                             |\n");
-        printf("  |  3. Modificar vehiculo                           |\n");
-        printf("  |  4. Listar vehiculos                              |\n");
-        printf("  |  0. Volver al menu principal                     |\n");
-        ui_separador();
+        menu_banner();
+        printf("    Flota de Vehiculos\n");
+        printf("  ................................................\n");
+        printf("    [ 1 ]  Alta de vehiculo\n");
+        printf("    [ 2 ]  Baja de vehiculo\n");
+        printf("    [ 3 ]  Modificar vehiculo\n");
+        printf("    [ 4 ]  Listar vehiculos\n");
+        printf("  ................................................\n");
+        printf("    [ 0 ]  Volver al menu principal\n");
+        printf("\n");
 
         opcion = ui_leer_int("Seleccione opcion", 0, 4);
 
@@ -519,7 +533,8 @@ static void usuario_alta(void) {
     int id_generado = 0;
 
     ui_limpiar();
-    printf("\n  --- ALTA DE USUARIO ---\n\n");
+    printf("\n  --- Alta de usuario ---\n");
+    printf("  ................................................\n\n");
 
     ui_leer_string("DNI (9 chars)", u.dni,        sizeof(u.dni));
     ui_leer_string("Nombre",        u.nombre,     sizeof(u.nombre));
@@ -541,7 +556,8 @@ static void usuario_alta(void) {
 
 static void usuario_baja(void) {
     ui_limpiar();
-    printf("\n  --- BAJA DE USUARIO ---\n\n");
+    printf("\n  --- Baja de usuario ---\n");
+    printf("  ................................................\n\n");
 
     int id = ui_leer_int("ID del usuario a eliminar", 1, 99999);
     if (id < 0) { ui_pausa(); return; }
@@ -560,7 +576,8 @@ static void usuario_baja(void) {
 
 static void usuario_modificar(void) {
     ui_limpiar();
-    printf("\n  --- MODIFICAR USUARIO ---\n\n");
+    printf("\n  --- Modificar usuario ---\n");
+    printf("  ................................................\n\n");
 
     Usuario u;
     memset(&u, 0, sizeof(Usuario));
@@ -587,7 +604,6 @@ static void usuario_modificar(void) {
 
 static void usuario_listado(void) {
     ui_limpiar();
-    printf("\n  --- LISTADO DE USUARIOS ---\n\n");
 
     Usuario *usuarios = NULL;
     int n = 0;
@@ -607,17 +623,21 @@ static void usuario_listado(void) {
         return;
     }
 
-    printf("ID DNI Nombre saldo\n");
+    printf("\n  --- Listado de usuarios ---\n");
+    printf("  ................................................\n\n");
+    printf("  %-6s  %-12s  %-20s  %s\n", "ID", "DNI", "Nombre", "Saldo");
+    printf("  ------  ------------  --------------------  --------\n");
 
     for (int i = 0; i < n; i++) {
-        printf("%d %s %s %f\n",
+        printf("  %-6d  %-12s  %-20s  %.2f\n",
                usuarios[i].id_usuario,
                usuarios[i].dni,
                usuarios[i].nombre,
                usuarios[i].saldo);
     }
 
-    printf("Total: %d usuarios.\n", n);
+    printf("  ................................................\n");
+    printf("  Total: %d usuarios.\n", n);
     free(usuarios);
     ui_pausa();
 }
@@ -626,15 +646,16 @@ void menu_usuarios(void) {
     int opcion;
     do {
         ui_limpiar();
-        ui_separador();
-        printf("  |              GESTION DE USUARIOS                |\n");
-        ui_separador();
-        printf("  |  1. Alta de usuario                              |\n");
-        printf("  |  2. Baja de usuario                              |\n");
-        printf("  |  3. Modificar usuario                            |\n");
-        printf("  |  4. Listar usuarios                              |\n");
-        printf("  |  0. Volver al menu principal                     |\n");
-        ui_separador();
+        menu_banner();
+        printf("    Usuarios\n");
+        printf("  ................................................\n");
+        printf("    [ 1 ]  Alta de usuario\n");
+        printf("    [ 2 ]  Baja de usuario\n");
+        printf("    [ 3 ]  Modificar usuario\n");
+        printf("    [ 4 ]  Listar usuarios\n");
+        printf("  ................................................\n");
+        printf("    [ 0 ]  Volver al menu principal\n");
+        printf("\n");
 
         opcion = ui_leer_int("Seleccione opcion", 0, 4);
 
@@ -655,28 +676,30 @@ void menu_usuarios(void) {
 
 static void imprimir_alquileres(Alquiler *alquileres, int n) {
     if (n == 0) {
-        printf("    No se han encontrado alquileres");
+        printf("  No se han encontrado alquileres.\n");
+        return;
     }
 
-    printf("ID Usuario Vehiculo Est.Origen Est.Destino Inicio Fin Coste");
+    printf("  ................................................\n\n");
+    printf("  %-6s  %-8s  %-8s  %-10s  %-10s  %-19s  %-19s  %s\n",
+           "ID", "Usuario", "Vehiculo", "Est.Orig.", "Est.Dest.", "Inicio", "Fin", "Coste");
+    printf("  ------  --------  --------  ----------  ----------  -------------------  -------------------  --------\n");
 
     for (int i = 0; i < n; i++) {
-        char dest[5];
+        char dest[8];
         char fin[21];
 
-        if (alquileres[i].id_estacion_destino > 0) {
+        if (alquileres[i].id_estacion_destino > 0)
             snprintf(dest, sizeof(dest), "%d", alquileres[i].id_estacion_destino);
-        } else {
+        else
             snprintf(dest, sizeof(dest), "-");
-        }
 
         if (strlen(alquileres[i].fecha_fin) > 0)
             strcpy(fin, alquileres[i].fecha_fin);
-        else {
+        else
             strcpy(fin, "En curso");
-        }
 
-        printf("  %d %d %d %d %s %s %s %f EUR\n",
+        printf("  %-6d  %-8d  %-8d  %-10d  %-10s  %-19s  %-19s  %.2f EUR\n",
                alquileres[i].id_alquiler,
                alquileres[i].id_usuario,
                alquileres[i].id_vehiculo,
@@ -686,23 +709,26 @@ static void imprimir_alquileres(Alquiler *alquileres, int n) {
                fin,
                alquileres[i].coste_total);
     }
-    printf("    Total: %d alquileres", n);
+
+    printf("  ................................................\n");
+    printf("  Total: %d alquileres.\n", n);
 }
 
 void menu_historico(void) {
     int opcion;
     do {
         ui_limpiar();
-        ui_separador();
-        printf("  |                    HISTORICO                     |\n");
-        ui_separador();
-        printf("  |  1. Ver todos los alquileres                     |\n");
-        printf("  |  2. Filtrar por usuario                          |\n");
-        printf("  |  3. Filtrar por fecha (Formato: YYYY/MM/DD)      |\n");
-        printf("  |  4. Ver 20 últimos alquileres                    |\n");
-        printf("  |  5. Ver 50 últimos alquileres                    |\n");
-        printf("  |  0. Volver al menu principal                     |\n");
-        ui_separador();
+        menu_banner();
+        printf("    Historico de Alquileres\n");
+        printf("  ................................................\n");
+        printf("    [ 1 ]  Ver todos los alquileres\n");
+        printf("    [ 2 ]  Filtrar por usuario\n");
+        printf("    [ 3 ]  Filtrar por fecha\n");
+        printf("    [ 4 ]  Ver 20 ultimos alquileres\n");
+        printf("    [ 5 ]  Ver 50 ultimos alquileres\n");
+        printf("  ................................................\n");
+        printf("    [ 0 ]  Volver al menu principal\n");
+        printf("\n");
 
         opcion = ui_leer_int("Selecciona una opcion", 0, 5);
 
@@ -710,7 +736,8 @@ void menu_historico(void) {
 
             case 1: {
                 ui_limpiar();
-                printf("      TODOS LOS ALQUILERES \n");
+                printf("\n  --- Todos los alquileres ---\n");
+                printf("  ................................................\n\n");
                 Alquiler *alquieres = NULL;
                 int cantidad = 0;
                 listar_alquileres(&alquieres, &cantidad);
@@ -722,7 +749,8 @@ void menu_historico(void) {
 
             case 2: {
                 ui_limpiar();
-                printf("      FILTRAR POR USUARIO \n\n");
+                printf("\n  --- Filtrar por usuario ---\n");
+                printf("  ................................................\n\n");
                 int id = ui_leer_int("ID de usuario", 1, 99999);
                 if (id < 0) {
                     ui_pausa();
@@ -740,7 +768,8 @@ void menu_historico(void) {
 
             case 3: {
                 ui_limpiar();
-                printf("      FILTRAR POR FECHA \n\n");
+                printf("\n  --- Filtrar por fecha ---\n");
+                printf("  ................................................\n\n");
                 int ano  = ui_leer_int("Año (YYYY)", 2025, 2050);
                 int mes   = ui_leer_int("Mes (1-12)", 1, 12);
                 int dia   = ui_leer_int("Dia (1-31)", 1, 31);
@@ -762,7 +791,8 @@ void menu_historico(void) {
 
             case 4: {
                 ui_limpiar();
-                printf("      ULTIMOS 20 ALQUILERES \n\n");
+                printf("\n  --- Ultimos 20 alquileres ---\n");
+                printf("  ................................................\n\n");
                 Alquiler *alquieres = NULL;
                 int cantidad = 0;
                 int rc = listar_ultimos_alquileres(20, &alquieres, &cantidad);
@@ -778,7 +808,8 @@ void menu_historico(void) {
 
             case 5: {
                 ui_limpiar();
-                printf("      ULTIMOS 50 ALQUILERES \n\n");
+                printf("\n  --- Ultimos 50 alquileres ---\n");
+                printf("  ................................................\n\n");
                 Alquiler *alquieres = NULL;
                 int cantidad = 0;
                 int rc = listar_ultimos_alquileres(50, &alquieres, &cantidad);
@@ -859,7 +890,8 @@ static FILE *abrir_fichero_informe(const char *tipo, const char *formato, char *
 
 static void informe_ocupacion(void) {
     ui_limpiar();
-    printf("\n  --- INFORME OCUPACION POR ESTACION ---\n\n");
+    printf("\n  --- Informe de ocupacion por estacion ---\n");
+    printf("  ................................................\n\n");
 
     Estacion *estaciones = NULL;
     int cantidad = 0;
@@ -877,34 +909,30 @@ static void informe_ocupacion(void) {
         return;
     }
 
-    printf("  %s %s %s %s %s\n",
-           "ID", "Nombre", "Capacidad Max", "Disponibles", "Ocupacion");
+    printf("  %-6s  %-20s  %-13s  %-11s  %s\n",
+       "ID", "Nombre", "Cap. Max", "Disponibles", "Ocupacion");
+    printf("  ------  --------------------  -------------  -----------  --------------------\n");
 
     for (int i = 0; i < cantidad; i++) {
         int capacidad = estaciones[i].capacidad_max;
         int disponibles = estaciones[i].disponibilidad_actual;
 
-        //Se normalizan valores en caso de inconsistencia
         if (capacidad < 0) capacidad = 0;
         if (disponibles < 0) disponibles = 0;
         if (disponibles > capacidad) disponibles = capacidad;
 
-        //Se evita la división por 0
         float porcentaje = (capacidad > 0)
                             ? ((float)disponibles * 100.0f / (float)capacidad) : 0.0f;
-
         if (porcentaje < 0.0f) porcentaje = 0.0f;
         if (porcentaje > 100.0f) porcentaje = 100.0f;
 
         char barra[21];
         int llenos = (int)(porcentaje / 5.0f);
-
-        for (int j = 0; j < 20; j++) {
+        for (int j = 0; j < 20; j++)
             barra[j] = (j < llenos) ? '#' : '.';
-        }
         barra[20] = '\0';
 
-        printf("  %d %s %d %d %.1f%% [%s]\n",
+        printf("  %-6d  %-20s  %-13d  %-11d  %.1f%% [%s]\n",
                estaciones[i].id_estacion,
                estaciones[i].nombre,
                estaciones[i].capacidad_max,
@@ -912,13 +940,15 @@ static void informe_ocupacion(void) {
                porcentaje, barra);
     }
 
+    printf("  ................................................\n");
     free(estaciones);
     ui_pausa();
 }
 
 static void informe_ranking_uso(void) {
     ui_limpiar();
-    printf("\n  --- RANKING DE USO DE VEHICULOS ---\n\n");
+    printf("\n  --- Ranking de uso de vehiculos ---\n");
+    printf("  ................................................\n\n");
 
     UsoVehiculo *lista = NULL;
     int cantidad = 0;
@@ -938,11 +968,13 @@ static void informe_ranking_uso(void) {
         return;
     }
 
-    printf("    Pos. ID Veh Tipo Num.Alquiler Min. totales");
+    printf("  %-5s  %-8s  %-10s  %-13s  %s\n",
+               "Pos.", "ID Veh.", "Tipo", "Alquileres", "Min. totales");
+    printf("  -----  --------  ----------  -------------  ------------\n");
 
     for (int i = 0; i < cantidad; i++) {
-        const char *tipo = (lista[i].tipo == 'B') ? "Bici" : "Patinete";
-        printf("  %d %d %s %d %.1f min\n",
+        const char *tipo = (lista[i].tipo == 'B') ? "Bicicleta" : "Patinete";
+        printf("  %-5d  %-8d  %-10s  %-13d  %.1f min\n",
                i + 1,
                lista[i].id_vehiculo,
                tipo,
@@ -950,35 +982,36 @@ static void informe_ranking_uso(void) {
                lista[i].minutos_totales);
     }
 
+    printf("  ................................................\n");
     free(lista);
     ui_pausa();
 }
 
 static void informe_financiero(void) {
     ui_limpiar();
-    printf("\n  --- INFORME FINANCIERO ---\n\n");
+    printf("\n  --- Informe financiero ---\n");
+    printf("  ................................................\n\n");
 
-    //Por tipo de vehiculo
     ResumenPorTipo por_tipo[2];
     int rc_tipo = informe_recaudacion_por_tipo(por_tipo);
     if (rc_tipo != SQLITE_OK) {
-        printf("    Error al calcular la recaudacion por tipo. Error: %d\n", rc_tipo);
+        printf("  Error al calcular la recaudacion por tipo. Error: %d\n", rc_tipo);
     } else {
         printf("  Recaudacion por tipo de vehiculo:\n\n");
-        printf("  %s %s %s\n", "Tipo", "Num.Alquileres", "Recaudacion");
+        printf("  %-12s  %-14s  %s\n", "Tipo", "Alquileres", "Recaudacion");
+        printf("  ------------  --------------  ------------\n");
 
         const char *nombres[2] = {"Bicicleta", "Patinete"};
         float total = 0.0f;
         for (int i = 0; i < 2; i++) {
-            printf("  %s %d %.2f EUR\n",
+            printf("  %-12s  %-14d  %.2f EUR\n",
                    nombres[i], por_tipo[i].num_alquileres, por_tipo[i].recaudacion);
             total += por_tipo[i].recaudacion;
         }
-        printf("  %s\n", "----------------------------------------");
-        printf("  Total: %.2f EUR\n\n",  total);
+        printf("  ............  ..............  ............\n");
+        printf("  %-12s  %-14s  %.2f EUR\n\n", "Total", "", total);
     }
 
-    //Por dia
     ResumenPorDia *por_dia = NULL;
     int cantidad = 0;
     int rc_dia = informe_recaudacion_por_dia(&por_dia, &cantidad);
@@ -998,13 +1031,16 @@ static void informe_financiero(void) {
     }
 
     printf("  Recaudacion por dia:\n\n");
-    printf("  Fecha    Num.Alquileres    Recaudacion");
+    printf("  %-12s  %-14s  %s\n", "Fecha", "Alquileres", "Recaudacion");
+    printf("  ------------  --------------  ------------\n");
+
     for (int i = 0; i < cantidad; i++) {
-        printf("  %s %d %.2f EUR\n",
+        printf("  %-12s  %-14d  %.2f EUR\n",
                por_dia[i].fecha, por_dia[i].num_alquileres, por_dia[i].recaudacion);
     }
 
-    //Exportar CSV
+    printf("  ................................................\n");
+
     printf("\n  Exportar a CSV? (s/n): ");
     char conf[4];
     fgets(conf, sizeof(conf), stdin);
@@ -1036,7 +1072,8 @@ static void informe_financiero(void) {
 
 static void informe_incidencias(void) {
     ui_limpiar();
-    printf("\n  --- INFORME DE INCIDENCIAS ---\n\n");
+    printf("\n  --- Informe de incidencias ---\n");
+    printf("  ................................................\n\n");
 
     Vehiculo *lista = NULL;
     int cantidad = 0;
@@ -1044,23 +1081,24 @@ static void informe_incidencias(void) {
 
     if (listar_vehiculos_bateria_baja(&lista, &cantidad, umbral) != 0 || cantidad == 0) {
         printf("  No hay vehiculos con bateria baja ni incidencias.\n");
-        ui_pausa(); return;
+        ui_pausa();
+        return;
     }
 
     printf("  Vehiculos con bateria < %d%% o estado critico:\n\n", umbral);
-    printf("  %s %s %s %s %s\n",
-           "ID", "Tipo", "Bateria(%)", "Estado", "ID Est.");
-    printf("  --------------------------------------------------\n");
+    printf("  %-6s  %-10s  %-10s  %-15s  %s\n",
+           "ID", "Tipo", "Bateria", "Estado", "Estacion");
+    printf("  ------  ----------  ----------  ---------------  --------\n");
 
     for (int i = 0; i < cantidad; i++) {
-        const char *tipo = (lista[i].tipo == 'B') ? "Bici" : "Patinete";
+        const char *tipo = (lista[i].tipo == 'B') ? "Bicicleta" : "Patinete";
         const char *estado;
         switch (lista[i].estado) {
-            case 'D': estado = "Disponible"; break;
-            case 'R': estado = "Rentado";    break;
-            case 'M': estado = "Mantenimiento";      break;
-            case 'B': estado = "Bloqueado";  break;
-            default:  estado = "?";          break;
+            case 'D': estado = "Disponible";    break;
+            case 'R': estado = "Rentado";        break;
+            case 'M': estado = "Mantenimiento"; break;
+            case 'B': estado = "Bloqueado";      break;
+            default:  estado = "?";              break;
         }
         char est_str[8];
         if (lista[i].id_estacion > 0)
@@ -1068,12 +1106,13 @@ static void informe_incidencias(void) {
         else
             snprintf(est_str, sizeof(est_str), "-");
 
-        printf("  %d %s %.1f %s %s\n",
+        printf("  %-6d  %-10s  %-9.1f%%  %-15s  %s\n",
                lista[i].id_vehiculo, tipo,
                lista[i].bateria, estado, est_str);
     }
 
-    /* Exportar TXT */
+    printf("  ................................................\n");
+
     printf("\n  Exportar a TXT? (s/n): ");
     char conf[4];
     fgets(conf, sizeof(conf), stdin);
@@ -1090,7 +1129,7 @@ static void informe_incidencias(void) {
                     snprintf(est_str, sizeof(est_str), "%d", lista[i].id_estacion);
                 else
                     snprintf(est_str, sizeof(est_str), "-");
-                if (fprintf(f, "%d %s %.1f %c           %s\n",
+                if (fprintf(f, "%d %s %.1f %c %s\n",
                         lista[i].id_vehiculo, tipo,
                         lista[i].bateria, lista[i].estado, est_str) < 0) seguir = 0;
             }
@@ -1115,15 +1154,16 @@ void menu_informes(void) {
     int opcion;
     do {
         ui_limpiar();
-        ui_separador();
-        printf("  |                     INFORMES                     |\n");
-        ui_separador();
-        printf("  |  1. Informe de Ocupacion                         |\n");
-        printf("  |  2. Ranking de uso de vehiculos                  |\n");
-        printf("  |  3. Resumen Financiero (Dia o Tipo de vehiculo)  |\n");
-        printf("  |  4. Informe de Incidencias (Bateria o averiados) |\n");
-        printf("  |  0. Volver al menu principal                     |\n");
-        ui_separador();
+        menu_banner();
+        printf("    Informes y Exportacion\n");
+        printf("  ................................................\n");
+        printf("    [ 1 ]  Informe de ocupacion\n");
+        printf("    [ 2 ]  Ranking de uso de vehiculos\n");
+        printf("    [ 3 ]  Resumen financiero\n");
+        printf("    [ 4 ]  Informe de incidencias\n");
+        printf("  ................................................\n");
+        printf("    [ 0 ]  Volver al menu principal\n");
+        printf("\n");
 
         opcion = ui_leer_int("Seleccione una opcion", 0, 4);
 
@@ -1145,12 +1185,13 @@ void menu_configuracion(void) {
     int opcion;
     do {
         ui_limpiar();
-        ui_separador();
-        printf("  |         CONFIGURACION DEL SISTEMA               |\n");
-        ui_separador();
-        printf("  |  1. Ver configuracion actual                     |\n");
-        printf("  |  0. Volver                                       |\n");
-        ui_separador();
+        menu_banner();
+        printf("    Configuracion del Sistema\n");
+        printf("  ................................................\n");
+        printf("    [ 1 ]  Ver configuracion actual\n");
+        printf("  ................................................\n");
+        printf("    [ 0 ]  Volver al menu principal\n");
+        printf("\n");
 
         opcion = ui_leer_int("Seleccione opcion", 0, 1);
 
