@@ -651,6 +651,10 @@ static void vehiculo_alta(void) {
                  id_generado, v.tipo, v.estado);
         LOG_I(msg);
         printf("\n  Vehiculo creado correctamente. ID asignado: %d\n", id_generado);
+    } else if (res == SQLITE_NOTFOUND) {
+        printf("\n  Error: La estacion no existe.\n");
+    } else if (res == SQLITE_FULL) {
+        printf("\n  Error: La estacion esta llena.\n");
     } else {
         printf("\n  Error al crear el vehiculo (codigo %d).\n", res);
     }
@@ -717,6 +721,10 @@ static void vehiculo_modificar(void) {
         snprintf(msg, sizeof(msg), "Modificacion vehiculo ID=%d", v.id_vehiculo);
         LOG_I(msg);
         printf("\n  Vehiculo actualizado correctamente.\n");
+    } else if (res == SQLITE_NOTFOUND) {
+        printf("\n  Error: Vehiculo o estacion no encontrados.\n");
+    } else if (res == SQLITE_FULL) {
+        printf("\n  Error: La estacion indicada esta llena (sin huecos).\n");
     } else {
         printf("\n  Error al actualizar (codigo %d).\n", res);
     }

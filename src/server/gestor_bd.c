@@ -16,6 +16,66 @@ static int texto_vacio_o_espacios(const char *s) {
     return 1;
 }
 
+static int obtener_capacidad_estacion(int id_estacion, int *capacidad_out) {
+    if (!db || !capacidad_out) return SQLITE_MISUSE;
+
+    sqlite3_stmt *stmt = NULL;
+    const char *sql =
+        "SELECT capacidad_max FROM ESTACION WHERE id_estacion = ?;";
+
+    int rc = sqlite3_prepare_v2(db, sql, -1, &stmt, NULL);
+    if (rc != SQLITE_OK) return rc;
+
+    sqlite3_bind_int(stmt, 1, id_estacion);
+    rc = sqlite3_step(stmt);
+
+    if (rc == SQLITE_ROW) {
+        *capacidad_out = sqlite3_column_int(stmt, 0);
+        sqlite3_finalize(stmt);
+        return SQLITE_OK;
+    }
+
+    sqlite3_finalize(stmt);
+    return SQLITE_ERROR;
+}
+
+static int contar_vehiculos_en_estacion(int id_estacion, int excluir_id_vehiculo, int *total_out) {
+    if (!db || !total_out) return SQLITE_MISUSE;
+
+    sqlite3_stmt *stmt = NULL;
+    const char *sql =
+        "SELECT COUNT(*) FROM VEHICULO WHERE id_estacion = ? AND id_vehiculo <> ?;";
+
+    int rc = sqlite3_prepare_v2(db, sql, -1, &stmt, NULL);
+    if (rc != SQLITE_OK) return rc;
+
+    sqlite3_bind_int(stmt, 1, id_estacion);
+    sqlite3_bind_int(stmt, 2, excluir_id_vehiculo);
+
+    rc = sqlite3_step(stmt);
+    if (rc == SQLITE_ROW) {
+        *total_out = sqlite3_column_int(stmt, 0);
+        sqlite3_finalize(stmt);
+        return SQLITE_OK;
+    }
+
+    sqlite3_finalize(stmt);
+    return SQLITE_ERROR;
+}
+
+static int validar_estacion_con_hueco(int id_estacion, int excluir_id_vehiculo) {
+    int capacidad = 0;
+    int rc = obtener_capacidad_estacion(id_estacion, &capacidad);
+    if (rc != SQLITE_OK) return rc;
+
+    int ocupados = 0;
+    rc = contar_vehiculos_en_estacion(id_estacion, excluir_id_vehiculo, &ocupados);
+    if (rc != SQLITE_OK) return rc;
+
+    if (ocupados >= capacidad) return SQLITE_FULL;
+    return SQLITE_OK;
+}
+
 /* ============================================================
  * CONEXION
  * ============================================================ */
@@ -95,6 +155,11 @@ int insertar_estacion(Estacion e, int *id_generado_out) {
 
 int insertar_vehiculo(Vehiculo v, int *id_generado_out) {
     if (!db) return SQLITE_MISUSE;
+
+    if (v.id_estacion > 0) {
+        int rc_val = validar_estacion_con_hueco(v.id_estacion, 0);
+        if (rc_val != SQLITE_OK) return rc_val;
+    }
 
     sqlite3_stmt *stmt = NULL;
     const char *sql =
@@ -300,6 +365,15 @@ int actualizar_usuario(Usuario u) {
 
 int actualizar_vehiculo(Vehiculo v) {
     if (!db) return SQLITE_MISUSE;
+
+    Vehiculo existente;
+    if (buscar_vehiculo(v.id_vehiculo, &existente) != 0) return SQLITE_NOTFOUND;
+
+    if (v.id_estacion > 0) {
+        int excluir = (existente.id_estacion == v.id_estacion) ? v.id_vehiculo : 0;
+        int rc_val = validar_estacion_con_hueco(v.id_estacion, excluir);
+        if (rc_val != SQLITE_OK) return rc_val;
+    }
 
     sqlite3_stmt *stmt = NULL;
     const char *sql =
