@@ -7,6 +7,15 @@
 
 static sqlite3 *db = NULL;
 
+static int texto_vacio_o_espacios(const char *s) {
+    if (!s) return 1;
+    while (*s) {
+        if (*s != ' ' && *s != '\t' && *s != '\n' && *s != '\r') return 0;
+        s++;
+    }
+    return 1;
+}
+
 /* ============================================================
  * CONEXION
  * ============================================================ */
@@ -41,7 +50,10 @@ void cerrar_bd(void) {
 
 int insertar_estacion(Estacion e, int *id_generado_out) {
     if (!db) return SQLITE_MISUSE;
-    if (e.capacidad_max <= 0 || e.disponibilidad_actual < 0)
+    if (texto_vacio_o_espacios(e.nombre) ||
+        e.capacidad_max <= 0 ||
+        e.disponibilidad_actual < 0 ||
+        e.disponibilidad_actual > e.capacidad_max)
         return SQLITE_CONSTRAINT;
 
     sqlite3_stmt *stmt = NULL;
@@ -56,12 +68,19 @@ int insertar_estacion(Estacion e, int *id_generado_out) {
         return rc;
     }
 
-    sqlite3_bind_text(stmt, 1, e.nombre,    -1, SQLITE_TRANSIENT);
-    sqlite3_bind_text(stmt, 2, e.direccion, -1, SQLITE_TRANSIENT);
-    sqlite3_bind_double(stmt, 3, (double)e.coord_x);
-    sqlite3_bind_double(stmt, 4, (double)e.coord_y);
-    sqlite3_bind_int (stmt, 5, e.capacidad_max);
-    sqlite3_bind_int (stmt, 6, e.disponibilidad_actual);
+    int rc_bind = SQLITE_OK;
+    if (sqlite3_bind_text(stmt, 1, e.nombre,    -1, SQLITE_TRANSIENT) != SQLITE_OK) rc_bind = SQLITE_ERROR;
+    if (sqlite3_bind_text(stmt, 2, e.direccion, -1, SQLITE_TRANSIENT) != SQLITE_OK) rc_bind = SQLITE_ERROR;
+    if (sqlite3_bind_double(stmt, 3, (double)e.coord_x) != SQLITE_OK) rc_bind = SQLITE_ERROR;
+    if (sqlite3_bind_double(stmt, 4, (double)e.coord_y) != SQLITE_OK) rc_bind = SQLITE_ERROR;
+    if (sqlite3_bind_int (stmt, 5, e.capacidad_max) != SQLITE_OK) rc_bind = SQLITE_ERROR;
+    if (sqlite3_bind_int (stmt, 6, e.disponibilidad_actual) != SQLITE_OK) rc_bind = SQLITE_ERROR;
+
+    if (rc_bind != SQLITE_OK) {
+        printf("[BD] Error bind INSERT ESTACION: %s\n", sqlite3_errmsg(db));
+        sqlite3_finalize(stmt);
+        return rc_bind;
+    }
 
     rc = sqlite3_step(stmt);
     sqlite3_finalize(stmt);
@@ -217,7 +236,10 @@ int dar_de_baja_usuario(int id)  { return borrar_por_id("USUARIO",  "id_usuario"
 
 int actualizar_estacion(Estacion e) {
     if (!db) return SQLITE_MISUSE;
-    if (e.capacidad_max <= 0 || e.disponibilidad_actual < 0)
+    if (texto_vacio_o_espacios(e.nombre) ||
+        e.capacidad_max <= 0 ||
+        e.disponibilidad_actual < 0 ||
+        e.disponibilidad_actual > e.capacidad_max)
         return SQLITE_CONSTRAINT;
 
     sqlite3_stmt *stmt = NULL;
@@ -229,13 +251,20 @@ int actualizar_estacion(Estacion e) {
     int rc = sqlite3_prepare_v2(db, sql, -1, &stmt, NULL);
     if (rc != SQLITE_OK) return rc;
 
-    sqlite3_bind_text(stmt, 1, e.nombre,    -1, SQLITE_TRANSIENT);
-    sqlite3_bind_text(stmt, 2, e.direccion, -1, SQLITE_TRANSIENT);
-    sqlite3_bind_double(stmt, 3, (double)e.coord_x);
-    sqlite3_bind_double(stmt, 4, (double)e.coord_y);
-    sqlite3_bind_int (stmt, 5, e.capacidad_max);
-    sqlite3_bind_int (stmt, 6, e.disponibilidad_actual);
-    sqlite3_bind_int (stmt, 7, e.id_estacion);
+    int rc_bind = SQLITE_OK;
+    if (sqlite3_bind_text(stmt, 1, e.nombre,    -1, SQLITE_TRANSIENT) != SQLITE_OK) rc_bind = SQLITE_ERROR;
+    if (sqlite3_bind_text(stmt, 2, e.direccion, -1, SQLITE_TRANSIENT) != SQLITE_OK) rc_bind = SQLITE_ERROR;
+    if (sqlite3_bind_double(stmt, 3, (double)e.coord_x) != SQLITE_OK) rc_bind = SQLITE_ERROR;
+    if (sqlite3_bind_double(stmt, 4, (double)e.coord_y) != SQLITE_OK) rc_bind = SQLITE_ERROR;
+    if (sqlite3_bind_int (stmt, 5, e.capacidad_max) != SQLITE_OK) rc_bind = SQLITE_ERROR;
+    if (sqlite3_bind_int (stmt, 6, e.disponibilidad_actual) != SQLITE_OK) rc_bind = SQLITE_ERROR;
+    if (sqlite3_bind_int (stmt, 7, e.id_estacion) != SQLITE_OK) rc_bind = SQLITE_ERROR;
+
+    if (rc_bind != SQLITE_OK) {
+        printf("[BD] Error bind UPDATE ESTACION: %s\n", sqlite3_errmsg(db));
+        sqlite3_finalize(stmt);
+        return rc_bind;
+    }
 
     rc = sqlite3_step(stmt);
     sqlite3_finalize(stmt);

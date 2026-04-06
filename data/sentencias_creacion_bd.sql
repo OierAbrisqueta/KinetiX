@@ -5,12 +5,12 @@ PRAGMA foreign_keys = ON;
 -- Tabla ESTACION
 CREATE TABLE ESTACION (
                           id_estacion INTEGER PRIMARY KEY AUTOINCREMENT,
-                          nombre VARCHAR(50) NOT NULL,
+                          nombre VARCHAR(50) NOT NULL CHECK (LENGTH(nombre) > 0),
                           direccion VARCHAR(100),
                           coord_x REAL NOT NULL DEFAULT 0.0,
                           coord_y REAL NOT NULL DEFAULT 0.0,
                           capacidad_max INTEGER NOT NULL CHECK (capacidad_max > 0),
-                          disponibilidad_actual INTEGER NOT NULL CHECK (disponibilidad_actual >= 0)
+                          disponibilidad_actual INTEGER NOT NULL CHECK (disponibilidad_actual >= 0 AND disponibilidad_actual <= capacidad_max)
 );
 
 -- Tabla VEHICULO

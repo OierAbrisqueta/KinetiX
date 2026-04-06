@@ -42,26 +42,118 @@ void ui_separador(void) {
     printf("  +--------------------------------------------------+\n");
 }
 
-int ui_leer_int(const char *prompt, int min, int max) {
-    char buf[64];
-    int  val;
+static void limpiar_buffer_teclado(void) {
+    int c;
+    while ((c = getchar()) != '\n' && c != EOF) {}
+}
 
-    printf("  %s [%d-%d]: ", prompt, min, max);
-    if (!fgets(buf, sizeof(buf), stdin)) return -1;
+static int esta_vacio(const char *s) {
+    if (!s) return 1;
 
-    if (sscanf(buf, "%d", &val) != 1) return -1;
-    if (val < min || val > max) {
-        printf("  Valor fuera de rango.\n");
-        return -1;
+    for (int i = 0; s[i] != '\0'; i++) {
+        if (s[i] != ' ' && s[i] != '\t' && s[i] != '\n' && s[i] != '\r') return 0;
     }
-    return val;
+
+    return 1;
+}
+
+static int ui_leer_float_en_rango(const char *mensaje, float min, float max) {
+    char buf[64];
+    float valor;
+    char extra;
+
+    while (1) {
+        printf("  %s [%.2f - %.2f]: ", mensaje, min, max);
+
+        //En caso de error se devuelve 0
+        if (!fgets(buf, sizeof(buf), stdin)) {
+            return 0;
+        }
+
+        /*Si la cadena es más larga que el buffer, limpiamos el resto
+        Para comprobarlo se busca si el salto de linea está dentro del texto*/
+        if (strchr(buf, '\n') == NULL) limpiar_buffer_teclado();
+
+        //Se verifica si el administrador ha escrito contenido
+        if (esta_vacio(buf)) {
+            printf("  Error: No puedes dejarlo vacío.\n");
+
+            //Se vuelve a preguntar
+            continue;
+        }
+
+        /*Se utiliza sscanf para comprobar los elementos escritos (busca un numérico y luego un char),
+         *Debería unicamente que haber uno numérico, en el hipotetico caso de que lea un char antes del numerico
+         * devolvera 0*/
+        if (sscanf(buf, " %f %c", &valor, &extra) != 1) {
+            printf("  Error: Debes introducir un número válido sin letras.\n");
+            continue;
+        }
+
+        //Se verifica el rango
+        if (valor < min || valor > max) {
+            printf("  Error: El número debe estar entre %.2f y %.2f.\n", min, max);
+            continue;
+        }
+
+        return valor;
+    }
+}
+
+int ui_leer_int(const char *mensaje, int min, int max) {
+    char buf[64];
+    int  valor;
+    char extra;
+
+    while (1) {
+        printf("  %s [%d-%d]: ", mensaje, min, max);
+
+        //En caso de error se devuelve 0
+        if (!fgets(buf, sizeof(buf), stdin)) {
+            return 0;
+        }
+
+        /*Si la cadena es más larga que el buffer, limpiamos el resto
+        Para comprobarlo se busca si el salto de linea está dentro del texto*/
+        if (strchr(buf, '\n') == NULL) limpiar_buffer_teclado();
+
+        //Se verifica si el administrador ha escrito contenido
+        if (esta_vacio(buf)) {
+            printf("  Error: No puedes dejarlo vacío.\n");
+
+            //Se vuelve a preguntar
+            continue;
+        }
+
+        /*Se utiliza sscanf para comprobar los elementos escritos (busca un entero y luego un char),
+         *Debería unicamente que haber uno entero, en el hipotetico caso de que lea un char antes del numerico
+         * devolvera 0. En este caso tambien comprueba que sea un entero*/
+        if (sscanf(buf, " %d %c", &valor, &extra) != 1) {
+            printf("  Error: Debes introducir un entero válido sin letras.\n");
+            continue;
+        }
+
+        //Se verifica el rango
+        if (valor < min || valor > max) {
+            printf("  Error: El número debe estar entre %d y %d.\n", min, max);
+            continue;
+        }
+
+        return valor;
+    }
 }
 
 void ui_leer_string(const char *prompt, char *buf, int max_len) {
     printf("  %s: ", prompt);
     if (fgets(buf, max_len, stdin)) {
         int len = (int)strlen(buf);
-        if (len > 0 && buf[len-1] == '\n') buf[len-1] = '\0';
+        if (len > 0 && buf[len-1] == '\n') {
+            buf[len-1] = '\0';
+        } else {
+            limpiar_buffer_teclado();
+        }
+    } else if (max_len > 0) {
+        buf[0] = '\0';
     }
 }
 
@@ -188,10 +280,34 @@ static void estacion_alta(void) {
     ui_limpiar();
     printf("\n  --- ALTA DE ESTACION ---\n\n");
 
-    ui_leer_string("Nombre",    e.nombre,    sizeof(e.nombre));
+    do {
+        ui_leer_string("Nombre", e.nombre, sizeof(e.nombre));
+        if (esta_vacio(e.nombre)) {
+            printf("  El nombre no puede estar vacio.\n");
+        }
+    } while (esta_vacio(e.nombre));
+
     ui_leer_string("Direccion", e.direccion, sizeof(e.direccion));
-    e.coord_x = ui_leer_float("Coordenada X", -100000.0f, 100000.0f);
-    e.coord_y = ui_leer_float("Coordenada Y", -100000.0f, 100000.0f);
+
+    float coord_x = ui_leer_float_en_rango("Coordenada X", -100000.0f, 100000.0f);
+
+    if (!coord_x) {
+        printf("  Coordenada X invalida.\n");
+        ui_pausa();
+        return;
+    }
+
+    e.coord_x = coord_x;
+
+    float coord_y = ui_leer_float_en_rango("Coordenada X", -100000.0f, 100000.0f);
+
+    if (!coord_y) {
+        printf("  Coordenada Y invalida.\n");
+        ui_pausa();
+        return;
+    }
+
+    e.coord_y = coord_y;
 
     e.capacidad_max = ui_leer_int("Capacidad maxima", 1, 50);
     if (e.capacidad_max < 0) { printf("  Capacidad invalida.\n"); ui_pausa(); return; }
@@ -254,10 +370,35 @@ static void estacion_modificar(void) {
     e.id_estacion = ui_leer_int("ID de la estacion a modificar", 1, 9999);
     if (e.id_estacion < 0) { ui_pausa(); return; }
 
-    ui_leer_string("Nuevo nombre",    e.nombre,    sizeof(e.nombre));
+    do {
+        ui_leer_string("Nuevo nombre", e.nombre, sizeof(e.nombre));
+        if (esta_vacio(e.nombre)) {
+            printf("  El nombre no puede estar vacio.\n");
+        }
+    } while (esta_vacio(e.nombre));
+
     ui_leer_string("Nueva direccion", e.direccion, sizeof(e.direccion));
-    e.coord_x = ui_leer_float("Nueva coordenada X", -100000.0f, 100000.0f);
-    e.coord_y = ui_leer_float("Nueva coordenada Y", -100000.0f, 100000.0f);
+
+    float coord_x = ui_leer_float_en_rango("Coordenada X", -100000.0f, 100000.0f);
+
+    if (!coord_x) {
+        printf("  Coordenada X invalida.\n");
+        ui_pausa();
+        return;
+    }
+
+    e.coord_x = coord_x;
+
+    float coord_y = ui_leer_float_en_rango("Coordenada X", -100000.0f, 100000.0f);
+
+    if (!coord_y) {
+        printf("  Coordenada Y invalida.\n");
+        ui_pausa();
+        return;
+    }
+
+    e.coord_y = coord_y;
+
     e.capacidad_max         = ui_leer_int("Nueva capacidad maxima", 1, 200);
     e.disponibilidad_actual = ui_leer_int("Nueva disponibilidad", 0, e.capacidad_max > 0 ? e.capacidad_max : 200);
 
