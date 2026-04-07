@@ -209,7 +209,7 @@ static int ui_leer_float_en_rango(const char *mensaje, float min, float max, flo
 
         //Se verifica si el administrador ha escrito contenido
         if (esta_vacio(buf)) {
-            printf("  Error: No puedes dejarlo vacío.\n");
+            printf("  Error: No puedes dejarlo vacio.\n");
 
             //Se vuelve a preguntar
             continue;
@@ -219,13 +219,13 @@ static int ui_leer_float_en_rango(const char *mensaje, float min, float max, flo
          *Debería unicamente que haber uno numérico, en el hipotetico caso de que lea un char antes del numerico
          * devolvera 0*/
         if (sscanf(buf, " %f %c", &valor, &extra) != 1) {
-            printf("  Error: Debes introducir un número válido sin letras.\n");
+            printf("  Error: Debes introducir un numero valido sin letras.\n");
             continue;
         }
 
         //Se verifica el rango
         if (valor < min || valor > max) {
-            printf("  Error: El número debe estar entre %.2f y %.2f.\n", min, max);
+            printf("  Error: El numero debe estar entre %.2f y %.2f.\n", min, max);
             continue;
         }
 
@@ -253,7 +253,7 @@ int ui_leer_int(const char *mensaje, int min, int max) {
 
         //Se verifica si el administrador ha escrito contenido
         if (esta_vacio(buf)) {
-            printf("  Error: No puedes dejarlo vacío.\n");
+            printf("  Error: No puedes dejarlo vacio.\n");
 
             //Se vuelve a preguntar
             continue;
@@ -263,13 +263,13 @@ int ui_leer_int(const char *mensaje, int min, int max) {
          *Debería unicamente que haber uno entero, en el hipotetico caso de que lea un char antes del numerico
          * devolvera 0. En este caso tambien comprueba que sea un entero*/
         if (sscanf(buf, " %d %c", &valor, &extra) != 1) {
-            printf("  Error: Debes introducir un entero válido sin letras.\n");
+            printf("  Error: Debes introducir un entero valido sin letras.\n");
             continue;
         }
 
         //Se verifica el rango
         if (valor < min || valor > max) {
-            printf("  Error: El número debe estar entre %d y %d.\n", min, max);
+            printf("  Error: El numero debe estar entre %d y %d.\n", min, max);
             continue;
         }
 
@@ -317,10 +317,10 @@ int menu_autenticar(void) {
         menu_banner();
         printf("  Acceso restringido. Identifiquese.\n\n");
 
-        ui_leer_string("Usuario ", usuario, sizeof(usuario));
+        ui_leer_string("Usuario", usuario, sizeof(usuario));
         /* Ocultar la clave en consola no es portable en C puro,
            se lee normal pero se podria mejorar con termios en Linux */
-        ui_leer_string("Clave ", clave, sizeof(clave));
+        ui_leer_string("Clave", clave, sizeof(clave));
 
         if (strcmp(usuario, g_config.admin_usuario) == 0 &&
             strcmp(clave,   g_config.admin_clave)   == 0) {
@@ -618,7 +618,7 @@ static void vehiculo_alta(void) {
     int id_generado = 0;
 
     ui_limpiar();
-    printf("\n  --- Alta de vehículo ---\n");
+    printf("\n  --- Alta de vehiculo ---\n");
     printf("  ................................................\n\n");
 
     if (!ui_leer_opcion_char("Tipo (B=Bicicleta, P=Patinete): ", "BP", &v.tipo)) {
@@ -663,7 +663,7 @@ static void vehiculo_alta(void) {
 
 static void vehiculo_baja(void) {
     ui_limpiar();
-    printf("\n  --- Baja de vehículo ---\n");
+    printf("\n  --- Baja de vehiculo ---\n");
     printf("  ................................................\n\n");
 
     int id = ui_leer_int("ID del vehiculo a dar de baja", 1, 9999);
@@ -683,7 +683,7 @@ static void vehiculo_baja(void) {
 
 static void vehiculo_modificar(void) {
     ui_limpiar();
-    printf("\n  --- Modificar vehículo ---\n");
+    printf("\n  --- Modificar vehiculo ---\n");
     printf("  ................................................\n\n");
 
     Vehiculo v;
@@ -1065,7 +1065,7 @@ void menu_historico(void) {
                 ui_limpiar();
                 printf("\n  --- Filtrar por fecha ---\n");
                 printf("  ................................................\n\n");
-                int ano  = ui_leer_int("Año (YYYY)", 2025, 2050);
+                int ano  = ui_leer_int("Ano (YYYY)", 2025, 2050);
                 int mes   = ui_leer_int("Mes (1-12)", 1, 12);
                 int dia   = ui_leer_int("Dia (1-31)", 1, 31);
                 if (ano < 0 || mes < 0 || dia < 0) {
@@ -1073,7 +1073,7 @@ void menu_historico(void) {
                     break;
                 }
                 char fecha[20];
-                snprintf(fecha, sizeof(fecha), "%d-%d-%d", ano, mes, dia);
+                snprintf(fecha, sizeof(fecha), "%04d-%02d-%02d", ano, mes, dia);
 
                 Alquiler *alquieres = NULL;
                 int cantidad = 0;
