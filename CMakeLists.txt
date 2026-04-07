@@ -11,7 +11,6 @@ add_executable(KinetiX_Server
         src/server/gestor_log.c
         src/server/menu.c
         src/server/sqlite3.c
-        src/server/gestor_config.c
         include/informes.h
 )
 
@@ -33,7 +32,13 @@ configure_file(
 )
 
 configure_file(
-        ${CMAKE_SOURCE_DIR}/data/KinetiX.sqlite
-        ${CMAKE_BINARY_DIR}/data/KinetiX.sqlite
+        ${CMAKE_SOURCE_DIR}/data/sentencias_creacion_bd.sql
+        ${CMAKE_BINARY_DIR}/data/sentencias_creacion_bd.sql
+        COPYONLY
+)
+
+configure_file(
+        ${CMAKE_SOURCE_DIR}/data/datos_de_prueba.sql
+        ${CMAKE_BINARY_DIR}/data/datos_de_prueba.sql
         COPYONLY
 )

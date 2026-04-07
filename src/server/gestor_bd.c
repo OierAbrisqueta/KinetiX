@@ -76,6 +76,67 @@ static int validar_estacion_con_hueco(int id_estacion, int excluir_id_vehiculo) 
     return SQLITE_OK;
 }
 
+//Se comprueba si la base de datos existe
+static int bd_existe(void) {
+    if (!db) return 0;
+
+    sqlite3_stmt *stmt = NULL;
+    /*Se busca si la tabla estacion existe, para que la bd no este vacia
+     *es esencial que la tabla estacion exista. Ya que el resto (menos usuario)
+     *dependen de ella*/
+    const char *sql = "SELECT count(*) FROM sqlite_master WHERE type='table' AND name='ESTACION';";
+    int count = 0;
+
+    int rc = sqlite3_prepare_v2(db, sql, -1, &stmt, NULL);
+    if (rc == SQLITE_OK) {
+        rc = sqlite3_step(stmt);
+        if (rc == SQLITE_ROW) {
+            count = sqlite3_column_int(stmt, 0);
+        }
+        sqlite3_finalize(stmt);
+    }
+    //Devuelve 1 si hay 1 o más columnas, es decir si existe
+    return (count != 0);
+}
+
+static int ejecutar_codigo_sql(const char *ruta) {
+    FILE *f = fopen(ruta, "r");
+    if (!f) {
+        printf("[BD] Error: No se ha encontrado el script.\n");
+        return -1;
+    }
+
+    //Es necesario conocer el tamaño del script para luego reservar la memoria exacta
+    fseek(f, 0, SEEK_END);
+    long size = ftell(f);
+    fseek(f, 0, SEEK_SET);
+
+    //Se reserva la memoria exacta
+    char *sql = (char *)malloc(size + 1);
+    if (!sql) {
+        fclose(f);
+        return -1;
+    }
+
+    //Se lee el archivo a la variable y se cierra
+    fread(sql, 1, size, f);
+    fclose(f);
+    sql[size] = '\0';
+
+    char *err_msg = NULL;
+    int rc = sqlite3_exec(db, sql, 0, 0, &err_msg);
+    free(sql);
+
+    if (rc != SQLITE_OK) {
+        printf("[BD] Error ejecutando script '%s': %s\n", ruta, err_msg);
+        sqlite3_free(err_msg);
+        return -1;
+    }
+
+    free(err_msg);
+    return 0;
+}
+
 /* ============================================================
  * CONEXION
  * ============================================================ */
@@ -92,6 +153,24 @@ int conectar_bd(const char *ruta_bd) {
         return rc;
     }
     sqlite3_exec(db, "PRAGMA foreign_keys = ON;", NULL, NULL, NULL);
+
+    //Se inicia automaticamente la base de datos si no está previamente inicializada
+    if (!bd_existe()) {
+        printf("[BD] Base de datos vacia: se inicia automáticamente\n");
+
+        //Se crean las tablas
+        int rc1 = ejecutar_codigo_sql("data/sentencias_creacion_bd.sql");
+        if (rc1 == 0) {
+            printf("[BD] Tablas creadas con exito\n");
+        }
+
+        //Se insertan los datos (las estaciones y vehiculos son definitivos, los usuarios y alquileres son provisionales)
+        int rc2 = ejecutar_codigo_sql("data/datos_de_prueba.sql");
+        if (rc2 == 0) {
+            printf("[BD] Datos insertados con exito\n");
+        }
+    }
+
     printf("[BD] Conexion establecida con '%s'.\n", ruta);
     return SQLITE_OK;
 }
@@ -978,7 +1057,7 @@ int ranking_uso_vehiculo(UsoVehiculo **lista_out, int *n_out, int top_n) {
     int i = 0;
     while (sqlite3_step(stmt) == SQLITE_ROW && i < mostrar) {
         array[i].id_vehiculo = sqlite3_column_int(stmt, 0);
-        array[i].tipo = sqlite3_column_text(stmt, 1)[0];
+        array[i].tipo = columna_char(stmt, 1);
         array[i].num_alquileres = sqlite3_column_int(stmt, 2);
         array[i].minutos_totales = sqlite3_column_double(stmt, 3);
         i++;
