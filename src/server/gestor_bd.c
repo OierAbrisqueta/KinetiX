@@ -1057,7 +1057,7 @@ int ranking_uso_vehiculo(UsoVehiculo **lista_out, int *n_out, int top_n) {
     int i = 0;
     while (sqlite3_step(stmt) == SQLITE_ROW && i < mostrar) {
         array[i].id_vehiculo = sqlite3_column_int(stmt, 0);
-        array[i].tipo = columna_char(stmt, 1);
+        array[i].tipo = sqlite3_column_text(stmt, 1)[0];
         array[i].num_alquileres = sqlite3_column_int(stmt, 2);
         array[i].minutos_totales = sqlite3_column_double(stmt, 3);
         i++;
