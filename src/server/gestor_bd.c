@@ -137,9 +137,7 @@ static int ejecutar_codigo_sql(const char *ruta) {
     return 0;
 }
 
-/* ============================================================
- * CONEXION
- * ============================================================ */
+//Conexión con la base de datos
 
 int conectar_bd(const char *ruta_bd) {
     const char *ruta = (ruta_bd && strlen(ruta_bd) > 0)
@@ -183,9 +181,7 @@ void cerrar_bd(void) {
     }
 }
 
-/* ============================================================
- * INSERCION
- * ============================================================ */
+//Inserción en la base de datos
 
 int insertar_estacion(Estacion e, int *id_generado_out) {
     if (!db) return SQLITE_MISUSE;
@@ -351,9 +347,7 @@ int insertar_alquiler(Alquiler a) {
     return SQLITE_OK;
 }
 
-/* ============================================================
- * BAJA
- * ============================================================ */
+//Eliminacion de la base de datos
 
 static int borrar_por_id(const char *tabla, const char *col_id, int id) {
     if (!db) return SQLITE_MISUSE;
@@ -374,9 +368,7 @@ int borrar_estacion(int id)      { return borrar_por_id("ESTACION", "id_estacion
 int dar_de_baja_vehiculo(int id) { return borrar_por_id("VEHICULO", "id_vehiculo",  id); }
 int dar_de_baja_usuario(int id)  { return borrar_por_id("USUARIO",  "id_usuario",   id); }
 
-/* ============================================================
- * ACTUALIZACION
- * ============================================================ */
+//Actualizacion de filas en la base de datos
 
 int actualizar_estacion(Estacion e) {
     if (!db) return SQLITE_MISUSE;
@@ -484,9 +476,7 @@ int actualizar_vehiculo(Vehiculo v) {
     return SQLITE_OK;
 }
 
-/* ============================================================
- * LECTURA / LISTADO
- * ============================================================ */
+//Recuperacion de la base de datos
 
 static int obtener_total(const char *sql_count, int *total_out) {
     sqlite3_stmt *cnt = NULL;

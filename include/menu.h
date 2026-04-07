@@ -1,7 +1,3 @@
-//
-// Created by jon.i on 26/03/2026.
-//
-
 #ifndef KINETIX_MENU_H
 #define KINETIX_MENU_H
 

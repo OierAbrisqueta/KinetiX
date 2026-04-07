@@ -1,7 +1,3 @@
-//
-// Created by jon.i on 26/03/2026.
-//
-
 #include <stdio.h>
 #include <stdlib.h>
 #include "gestor_config.h"

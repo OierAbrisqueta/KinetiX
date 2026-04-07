@@ -12,14 +12,9 @@
 #include "modelos.h"
 #include "informes.h"
 
-/* ============================================================
- * menu.c - Logica de navegacion y menus del administrador
- * ============================================================ */
+//Las primeras funciones, son funciones que se utilizaran a lo largo del codigo para que no haya redundancia
 
-/* ============================================================
- * UTILIDADES DE UI
- * ============================================================ */
-
+//Limpia la consola en funcion del sistema operativo
 void ui_limpiar(void) {
 #ifdef _WIN32
     system("cls");
@@ -86,6 +81,7 @@ static void leer_dni(char *buf, int max) {
             continue;
         }
 
+        //Se comprueba que el formato sea exactamente el de un dni
         int valido = 1;
         for (int i = 0; i < 8; i++) {
             if (!isdigit((unsigned char)buf[i])) {
@@ -129,6 +125,7 @@ static void leer_nie(char *buf, int max) {
             continue;
         }
 
+        //Al primer caracter le siguen 7 numericos
         int valido = 1;
         for (int i = 1; i < 8; i++) {
             if (!isdigit((unsigned char)buf[i])) {
@@ -137,6 +134,7 @@ static void leer_nie(char *buf, int max) {
             }
         }
 
+        //Termina con un caracter alfabetico
         if (!isalpha((unsigned char)buf[8])) valido = 0;
 
         if (!valido) {
@@ -168,12 +166,16 @@ int ui_leer_opcion_char(const char *prompt, const char *validos, char *out) {
     while (1) {
         printf("  %s", prompt);
 
+        //En caso de error de lectura se devuelve 0
         if (!fgets(buf, sizeof(buf), stdin)) {
             return 0;
         }
 
+        /*Si la cadena es más larga que el buffer, limpiamos el resto
+        Para comprobarlo se busca si el salto de linea está dentro del texto*/
         if (strchr(buf, '\n') == NULL) limpiar_buffer_teclado();
 
+        //Se verifica si se ha escrito contenido
         if (esta_vacio(buf)) {
             printf("  Error: No puedes dejarlo vacio.\n");
             continue;
@@ -291,9 +293,7 @@ void ui_leer_string(const char *prompt, char *buf, int max_len) {
     }
 }
 
-/* ============================================================
- * BANNER Y AUTENTICACION
- * ============================================================ */
+//Las siguientes funciones correspnden al banner y al menu de autentificación
 
 void menu_banner(void) {
     printf("\n");
@@ -348,9 +348,7 @@ int menu_autenticar(void) {
     return 0;
 }
 
-/* ============================================================
- * MENU PRINCIPAL
- * ============================================================ */
+//Menu principal
 
 void menu_principal(void) {
     int opcion;
@@ -392,10 +390,9 @@ void menu_principal(void) {
     } while (opcion != 0);
 }
 
-/* ============================================================
- * SUBMENU ESTACIONES
- * ============================================================ */
+//Submenu Estaciones
 
+//Permite dar de alta una estacion
 static void estacion_alta(void) {
     Estacion e;
     memset(&e, 0, sizeof(Estacion));
@@ -454,6 +451,7 @@ static void estacion_alta(void) {
     ui_pausa();
 }
 
+//Permite dar de baja una estacion
 static void estacion_baja(void) {
     ui_limpiar();
     printf("\n  --- Baja de estacion ---\n");
@@ -483,6 +481,7 @@ static void estacion_baja(void) {
     ui_pausa();
 }
 
+//Permite modificar una estacion existente
 static void estacion_modificar(void) {
     ui_limpiar();
     printf("\n  --- Modificar estacion ---\n");
@@ -536,6 +535,7 @@ static void estacion_modificar(void) {
     ui_pausa();
 }
 
+//Permite listar las estaciones
 static void estacion_listado(void) {
     ui_limpiar();
 
@@ -559,12 +559,12 @@ static void estacion_listado(void) {
 
     printf("\n  --- Listado de estaciones ---\n");
     printf("  ................................................\n\n");
-    printf("  %-6s  %-20s  %-20s  %-8s  %-8s  %-5s  %s\n",
+    printf("  %-6s  %-20s  %-46s  %-8s  %-8s  %-5s  %s\n",
            "ID", "Nombre", "Direccion", "CoordX", "CoordY", "Cap.", "Disp.");
-    printf("  ------  --------------------  --------------------  --------  --------  -----  -----\n");
+    printf("  ------  --------------------  ----------------------------------------------  --------  --------  -----  -----\n");
 
     for (int i = 0; i < n; i++) {
-        printf("  %-6d  %-20s  %-20s  %-8.2f  %-8.2f  %-5d  %d\n",
+        printf("  %-6d  %-20.20s  %-46.46s  %-8.2f  %-8.2f  %-5d  %d\n",
                estaciones[i].id_estacion,
                estaciones[i].nombre,
                estaciones[i].direccion,
@@ -608,10 +608,9 @@ void menu_estaciones(void) {
     } while (opcion != 0);
 }
 
-/* ============================================================
- * SUBMENU VEHICULOS
- * ============================================================ */
+//Submenu vehiculos
 
+//Permite dar de alta un vehiculo
 static void vehiculo_alta(void) {
     Vehiculo v;
     memset(&v, 0, sizeof(Vehiculo));
@@ -661,6 +660,7 @@ static void vehiculo_alta(void) {
     ui_pausa();
 }
 
+//Permite eliminar un vehiculo
 static void vehiculo_baja(void) {
     ui_limpiar();
     printf("\n  --- Baja de vehiculo ---\n");
@@ -681,6 +681,7 @@ static void vehiculo_baja(void) {
     ui_pausa();
 }
 
+//Permite modificar un vehiculo
 static void vehiculo_modificar(void) {
     ui_limpiar();
     printf("\n  --- Modificar vehiculo ---\n");
@@ -731,6 +732,7 @@ static void vehiculo_modificar(void) {
     ui_pausa();
 }
 
+//Muestra todos los vehiculos
 static void vehiculo_listado(void) {
     ui_limpiar();
 
@@ -802,10 +804,9 @@ void menu_vehiculos(void) {
     } while (opcion != 0);
 }
 
-/* ============================================================
- * SUBMENU USUARIOS
- * ============================================================ */
+//Submenu de Usuarios
 
+//Permite dar de alta un usuario
 static void usuario_alta(void) {
     Usuario u;
     memset(&u, 0, sizeof(Usuario));
@@ -841,6 +842,7 @@ static void usuario_alta(void) {
     ui_pausa();
 }
 
+//Permite eliminar un usuario
 static void usuario_baja(void) {
     ui_limpiar();
     printf("\n  --- Baja de usuario ---\n");
@@ -861,6 +863,7 @@ static void usuario_baja(void) {
     ui_pausa();
 }
 
+//Permite modificar un usuario existente
 static void usuario_modificar(void) {
     ui_limpiar();
     printf("\n  --- Modificar usuario ---\n");
@@ -897,6 +900,7 @@ static void usuario_modificar(void) {
     ui_pausa();
 }
 
+//Muestra por consola los usuarios, no muestra la contraseña
 static void usuario_listado(void) {
     ui_limpiar();
 
@@ -965,10 +969,9 @@ void menu_usuarios(void) {
     } while (opcion != 0);
 }
 
-/* ============================================================
- * SUBMENU HISTORICO / LOGS
- * ============================================================ */
+//Submenu alquileres
 
+//Imprime un numero n de alquileres que se pasa como parametro
 static void imprimir_alquileres(Alquiler *alquileres, int n) {
     if (n == 0) {
         printf("  No se han encontrado alquileres.\n");
@@ -1123,9 +1126,7 @@ void menu_historico(void) {
     } while (opcion != 0);
 }
 
-/* ============================================================
- * SUBMENU INFORMES
- * ============================================================ */
+//Submenu de informes
 
 static int asegurar_directorio(const char *ruta) {
     if (!ruta || ruta[0] == '\0') return 0;
@@ -1183,6 +1184,7 @@ static FILE *abrir_fichero_informe(const char *tipo, const char *formato, char *
     return NULL;
 }
 
+//Genera el informe de ocupacion por estacion
 static void informe_ocupacion(void) {
     ui_limpiar();
     printf("\n  --- Informe de ocupacion por estacion ---\n");
@@ -1240,6 +1242,7 @@ static void informe_ocupacion(void) {
     ui_pausa();
 }
 
+//Genera el informe de ranking de uso de vehiculos
 static void informe_ranking_uso(void) {
     ui_limpiar();
     printf("\n  --- Ranking de uso de vehiculos ---\n");
@@ -1473,9 +1476,7 @@ void menu_informes(void) {
     } while (opcion != 0);
 }
 
-/* ============================================================
- * SUBMENU CONFIGURACION
- * ============================================================ */
+//Submenu configuracion
 
 void menu_configuracion(void) {
     int opcion;

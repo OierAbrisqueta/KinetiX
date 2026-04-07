@@ -1,7 +1,3 @@
-//
-// Created by jon.i on 26/03/2026.
-//
-
 #ifndef KINETIX_GESTOR_CONFIG_H
 #define KINETIX_GESTOR_CONFIG_H
 
