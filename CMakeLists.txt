@@ -11,17 +11,16 @@ add_executable(KinetiX_Server
         src/server/gestor_log.c
         src/server/menu.c
         src/server/sqlite3.c
-        include/informes.h
         src/server/hash_utils.c
+        src/server/server_socket.c
+        include/informes.h
+        src/server/protocolo_servidor.c
+        include/protocolo_servidor.h
 )
 
-target_include_directories(KinetiX_Server PRIVATE
-        include
-)
+target_include_directories(KinetiX_Server PRIVATE include)
 
-if (UNIX)
-    target_link_libraries(KinetiX_Server PRIVATE dl pthread m)
-endif()
+target_link_libraries(KinetiX_Server PRIVATE ws2_32)
 
 file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/data)
 file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/data/reportes)

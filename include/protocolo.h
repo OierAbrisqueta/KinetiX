@@ -1,10 +1,3 @@
-//
-// Created by jon.i on 07/05/2026.
-//
-
-#ifndef KINETIX_PROTOCOLO_H
-#define KINETIX_PROTOCOLO_H
-
 #ifndef KINETIX_PROTOCOLO_H
 #define KINETIX_PROTOCOLO_H
 
@@ -17,40 +10,34 @@
 #define PROTO_BUFF_SIZE     4096
 #define PROTO_MAX_CAMPOS    16
 
-/* ── Separadores de serialización ──────────────────────────── */
+/* ── Separadores ────────────────────────────────────────────── */
 #define PROTO_SEP_CAMPO     "|"
 #define PROTO_SEP_FILA      "\n"
 #define PROTO_SEP_CAMPO_C   '|'
 #define PROTO_SEP_FILA_C    '\n'
 
 /* ── Comandos (cliente → servidor) ─────────────────────────── */
-
-/* Sesión */
 #define CMD_LOGIN               "LOGIN"
 #define CMD_EXIT                "EXIT"
 
-/* Estaciones */
 #define CMD_LIST_ESTACIONES     "LIST_ESTACIONES"
 #define CMD_GET_ESTACION        "GET_ESTACION"
 #define CMD_ADD_ESTACION        "ADD_ESTACION"
 #define CMD_UPDATE_ESTACION     "UPDATE_ESTACION"
 #define CMD_DELETE_ESTACION     "DELETE_ESTACION"
 
-/* Vehículos */
 #define CMD_LIST_VEHICULOS      "LIST_VEHICULOS"
 #define CMD_GET_VEHICULO        "GET_VEHICULO"
 #define CMD_ADD_VEHICULO        "ADD_VEHICULO"
 #define CMD_UPDATE_VEHICULO     "UPDATE_VEHICULO"
 #define CMD_BAJA_VEHICULO       "BAJA_VEHICULO"
 
-/* Usuarios */
 #define CMD_LIST_USUARIOS       "LIST_USUARIOS"
 #define CMD_GET_USUARIO         "GET_USUARIO"
 #define CMD_ADD_USUARIO         "ADD_USUARIO"
 #define CMD_UPDATE_USUARIO      "UPDATE_USUARIO"
 #define CMD_BAJA_USUARIO        "BAJA_USUARIO"
 
-/* Alquileres */
 #define CMD_LIST_ALQUILERES     "LIST_ALQUILERES"
 #define CMD_ALQUILAR            "ALQUILAR"
 #define CMD_DEVOLVER            "DEVOLVER"
@@ -61,101 +48,72 @@
 #define RESP_BYE                "BYE"
 #define RESP_NOT_FOUND          "NOT_FOUND"
 
-/* =============================================================
+/*
+ * =============================================================
  *  ESPECIFICACION DEL PROTOCOLO
  *  Formato general: "<COMANDO> [arg]\n"
  *  El servidor siempre termina su respuesta con '\n'
  * =============================================================
  *
  *  LOGIN <dni>|<contrasena>
- *      → "OK\n"
- *      → "ERROR\n"
+ *      OK  /  ERROR
  *
  *  EXIT
- *      → "BYE\n"
- *
- *  -- ESTACIONES --
+ *      BYE
  *
  *  LIST_ESTACIONES
- *      → "<n>\n"
- *        "<id>|<nombre>|<dir>|<cx>|<cy>|<cap>|<disp>\n"  (repetido n veces)
+ *      <n>\n  +  n x "<id>|<nombre>|<dir>|<cx>|<cy>|<cap>|<disp>\n"
  *
  *  GET_ESTACION <id>
- *      → "OK\n<id>|<nombre>|<dir>|<cx>|<cy>|<cap>|<disp>\n"
- *      → "NOT_FOUND\n"
+ *      OK\n<id>|<nombre>|<dir>|<cx>|<cy>|<cap>|<disp>\n  /  NOT_FOUND
  *
  *  ADD_ESTACION <nombre>|<dir>|<cx>|<cy>|<cap>|<disp>
- *      → "OK <id_generado>\n"
- *      → "ERROR\n"
+ *      OK <id_generado>  /  ERROR
  *
  *  UPDATE_ESTACION <id>|<nombre>|<dir>|<cx>|<cy>|<cap>|<disp>
- *      → "OK\n"
- *      → "ERROR\n"
+ *      OK  /  ERROR
  *
  *  DELETE_ESTACION <id>
- *      → "OK\n"
- *      → "ERROR\n"
- *
- *  -- VEHICULOS --
+ *      OK  /  ERROR
  *
  *  LIST_VEHICULOS
- *      → "<n>\n"
- *        "<id>|<tipo>|<bateria>|<id_estacion>|<estado>\n"  (repetido n veces)
+ *      <n>\n  +  n x "<id>|<tipo>|<bateria>|<id_estacion>|<estado>\n"
  *
  *  GET_VEHICULO <id>
- *      → "OK\n<id>|<tipo>|<bateria>|<id_estacion>|<estado>\n"
- *      → "NOT_FOUND\n"
+ *      OK\n<id>|<tipo>|<bateria>|<id_estacion>|<estado>\n  /  NOT_FOUND
  *
  *  ADD_VEHICULO <tipo>|<bateria>|<id_estacion>|<estado>
- *      → "OK <id_generado>\n"
- *      → "ERROR\n"
+ *      OK <id_generado>  /  ERROR
  *
  *  UPDATE_VEHICULO <id>|<tipo>|<bateria>|<id_estacion>|<estado>
- *      → "OK\n"
- *      → "ERROR\n"
+ *      OK  /  ERROR
  *
  *  BAJA_VEHICULO <id>
- *      → "OK\n"
- *      → "ERROR\n"
- *
- *  -- USUARIOS --
+ *      OK  /  ERROR
  *
  *  LIST_USUARIOS
- *      → "<n>\n"
- *        "<id>|<dni>|<nombre>|<saldo>\n"  (repetido n veces, SIN contrasena)
+ *      <n>\n  +  n x "<id>|<dni>|<nombre>|<saldo>\n"  (sin contrasena)
  *
  *  GET_USUARIO <id>
- *      → "OK\n<id>|<dni>|<nombre>|<saldo>\n"
- *      → "NOT_FOUND\n"
+ *      OK\n<id>|<dni>|<nombre>|<saldo>\n  /  NOT_FOUND
  *
  *  ADD_USUARIO <dni>|<nombre>|<saldo>|<contrasena>
- *      → "OK <id_generado>\n"
- *      → "ERROR\n"
+ *      OK <id_generado>  /  ERROR
  *
  *  UPDATE_USUARIO <id>|<dni>|<nombre>|<saldo>
- *      → "OK\n"
- *      → "ERROR\n"
+ *      OK  /  ERROR
  *
  *  BAJA_USUARIO <id>
- *      → "OK\n"
- *      → "ERROR\n"
- *
- *  -- ALQUILERES --
+ *      OK  /  ERROR
  *
  *  LIST_ALQUILERES
- *      → "<n>\n"
- *        "<id>|<id_usuario>|<id_vehiculo>|<id_est_orig>|<id_est_dest>|<f_inicio>|<f_fin>|<coste>\n"
+ *      <n>\n  +  n x "<id>|<id_u>|<id_v>|<est_orig>|<est_dest>|<f_ini>|<f_fin>|<coste>\n"
  *
  *  ALQUILAR <id_usuario>|<id_vehiculo>|<id_estacion_origen>
- *      → "OK <id_alquiler>\n"
- *      → "ERROR\n"
+ *      OK <id_alquiler>  /  ERROR
  *
  *  DEVOLVER <id_alquiler>|<id_estacion_destino>
- *      → "OK\n"
- *      → "ERROR\n"
- *
+ *      OK  /  ERROR
  * ============================================================= */
 
 #endif /* KINETIX_PROTOCOLO_H */
-
-#endif //KINETIX_PROTOCOLO_H
