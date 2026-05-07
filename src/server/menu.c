@@ -11,6 +11,7 @@
 #include "gestor_bd.h"
 #include "modelos.h"
 #include "informes.h"
+#include "hash_utils.h"
 
 //Las primeras funciones, son funciones que se utilizaran a lo largo del codigo para que no haya redundancia
 
@@ -323,7 +324,7 @@ int menu_autenticar(void) {
         ui_leer_string("Clave", clave, sizeof(clave));
 
         if (strcmp(usuario, g_config.admin_usuario) == 0 &&
-            strcmp(clave,   g_config.admin_clave)   == 0) {
+            verificar_clave(clave, g_config.admin_clave)) {
 
             char msg[128];
             snprintf(msg, sizeof(msg), "Login correcto: usuario '%s'", usuario);

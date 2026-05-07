@@ -12,6 +12,7 @@ add_executable(KinetiX_Server
         src/server/menu.c
         src/server/sqlite3.c
         include/informes.h
+        src/server/hash_utils.c
 )
 
 target_include_directories(KinetiX_Server PRIVATE
