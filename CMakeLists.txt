@@ -20,7 +20,9 @@ add_executable(KinetiX_Admin
         include/informes.h
 )
 target_include_directories(KinetiX_Admin PRIVATE include)
-target_link_libraries(KinetiX_Admin PRIVATE ws2_32)
+if (WIN32)
+    target_link_libraries(KinetiX_Admin PRIVATE ws2_32)
+endif()
 
 # Ejecutable 2: servidor remoto (Fase 2)
 add_executable(KinetiX_Server
@@ -31,7 +33,9 @@ add_executable(KinetiX_Server
         include/informes.h
 )
 target_include_directories(KinetiX_Server PRIVATE include)
-target_link_libraries(KinetiX_Server PRIVATE ws2_32)
+if (WIN32)
+    target_link_libraries(KinetiX_Server PRIVATE ws2_32)
+endif()
 
 file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/data)
 file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/data/reportes)

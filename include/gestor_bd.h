@@ -20,6 +20,7 @@ int dar_de_baja_usuario(int id);
 int actualizar_estacion(Estacion e);
 int actualizar_usuario(Usuario u);
 int actualizar_vehiculo(Vehiculo v);
+int actualizar_alquiler(Alquiler a);
 
 int listar_estaciones(Estacion **lista_out, int *cantidad_out);
 int listar_vehiculos(Vehiculo  **lista_out, int *cantidad_out);

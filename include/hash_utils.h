@@ -2,8 +2,7 @@
 #define KINETIX_HASH_UTILS_H
 
 /* =============================================================
- *  hash_utils.h  —  Hashing de contraseñas con SHA-256
- *  Usa wincrypt.h (Windows) sin dependencias externas
+ *  hash_utils.h  —  Hashing de contraseñas con SHA-256 portable
  * ============================================================= */
 
 /* Longitud de un hash SHA-256 en hex: 64 caracteres + '\0' */

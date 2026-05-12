@@ -1,4 +1,3 @@
-#include <winsock2.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -363,10 +362,22 @@ static void handle_alquilar(kinetix_socket_t s, const char *args) {
     char *c[3];
     if (split_campos(copia, c, 3) < 3) { resp_simple(s, RESP_ERROR); return; }
 
+    int id_usuario  = atoi(c[0]);
+    int id_vehiculo = atoi(c[1]);
+
+    Vehiculo v;
+    if (buscar_vehiculo(id_vehiculo, &v) != 0) { resp_simple(s, RESP_ERROR); return; }
+    if (v.estado != 'D') { resp_simple(s, RESP_ERROR); return; }
+    if (v.bateria <= (float)g_config.bateria_minima) { resp_simple(s, RESP_ERROR); return; }
+
+    Usuario u;
+    if (buscar_usuario(id_usuario, &u) != 0) { resp_simple(s, RESP_ERROR); return; }
+    if (u.saldo <= 0.0f) { resp_simple(s, RESP_ERROR); return; }
+
     Alquiler a;
     memset(&a, 0, sizeof(a));
-    a.id_usuario          = atoi(c[0]);
-    a.id_vehiculo         = atoi(c[1]);
+    a.id_usuario          = id_usuario;
+    a.id_vehiculo         = id_vehiculo;
     a.id_estacion_origen  = atoi(c[2]);
     a.id_estacion_destino = 0;
     a.coste_total         = 0.0f;
@@ -378,12 +389,9 @@ static void handle_alquilar(kinetix_socket_t s, const char *args) {
 
     if (insertar_alquiler(a) != 0) { resp_simple(s, RESP_ERROR); return; }
 
-    Vehiculo v;
-    if (buscar_vehiculo(a.id_vehiculo, &v) == 0) {
-        v.estado = 'R';
-        v.id_estacion = 0;
-        actualizar_vehiculo(v);
-    }
+    v.estado = 'R';
+    v.id_estacion = 0;
+    actualizar_vehiculo(v);
 
     char resp[64];
     snprintf(resp, sizeof(resp), RESP_OK " %d\n", a.id_alquiler);
@@ -416,12 +424,16 @@ static void handle_devolver(kinetix_socket_t s, const char *args) {
     }
     if (!al) { free(lista); resp_simple(s, RESP_ERROR); return; }
 
+    // Copia local para poder liberar la lista con seguridad.
+    Alquiler al_copia = *al;
+    free(lista);
+
     time_t ahora = time(NULL);
     struct tm *tm_fin = localtime(&ahora);
-    strftime(al->fecha_fin, sizeof(al->fecha_fin), "%Y-%m-%d %H:%M:%S", tm_fin);
+    strftime(al_copia.fecha_fin, sizeof(al_copia.fecha_fin), "%Y-%m-%d %H:%M:%S", tm_fin);
 
     struct tm tm_ini = {0};
-    sscanf(al->fecha_inicio, "%d-%d-%d %d:%d:%d",
+    sscanf(al_copia.fecha_inicio, "%d-%d-%d %d:%d:%d",
            &tm_ini.tm_year, &tm_ini.tm_mon,  &tm_ini.tm_mday,
            &tm_ini.tm_hour, &tm_ini.tm_min,  &tm_ini.tm_sec);
     tm_ini.tm_year -= 1900;
@@ -431,19 +443,20 @@ static void handle_devolver(kinetix_socket_t s, const char *args) {
 
     Vehiculo v;
     float tarifa = g_config.tarifa_bici_min;
-    if (buscar_vehiculo(al->id_vehiculo, &v) == 0 && v.tipo == 'P')
+    if (buscar_vehiculo(al_copia.id_vehiculo, &v) == 0 && v.tipo == 'P')
         tarifa = g_config.tarifa_patinete_min;
 
-    al->coste_total         = (float)(minutos * tarifa);
-    al->id_estacion_destino = id_estacion_destino;
+    al_copia.coste_total         = (float)(minutos * tarifa);
+    al_copia.id_estacion_destino = id_estacion_destino;
 
-    if (buscar_vehiculo(al->id_vehiculo, &v) == 0) {
+    actualizar_alquiler(al_copia);
+
+    if (buscar_vehiculo(al_copia.id_vehiculo, &v) == 0) {
         v.estado = 'D';
         v.id_estacion = id_estacion_destino;
         actualizar_vehiculo(v);
     }
 
-    free(lista);
     resp_simple(s, RESP_OK);
     LOG_I("Devolucion registrada via cliente.");
 }

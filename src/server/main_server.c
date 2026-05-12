@@ -1,4 +1,3 @@
-#include <winsock2.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include "gestor_config.h"

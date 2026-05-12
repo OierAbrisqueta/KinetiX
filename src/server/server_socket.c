@@ -1,9 +1,10 @@
 #include "protocolo.h"
-#include <winsock2.h>
+#include "server_socket.h"
+#ifdef _WIN32
 #pragma comment(lib, "ws2_32.lib")
+#endif
 #include <stdio.h>
 #include <string.h>
-#include "server_socket.h"
 #include "gestor_log.h"
 
 /* =============================================================
@@ -15,11 +16,13 @@ static kinetix_socket_t g_socket_escucha = KINETIX_SOCKET_INVALIDO;
 
 /* ── servidor_iniciar ───────────────────────────────────────── */
 int servidor_iniciar(int puerto) {
+#ifdef _WIN32
     WSADATA wsa;
     if (WSAStartup(MAKEWORD(2, 2), &wsa) != 0) {
         LOG_E("WSAStartup fallido.");
         return -1;
     }
+#endif
 
     g_socket_escucha = socket(AF_INET, SOCK_STREAM, 0);
     if (g_socket_escucha == KINETIX_SOCKET_INVALIDO) {
@@ -62,7 +65,11 @@ int servidor_iniciar(int puerto) {
 /* ── servidor_aceptar_cliente ───────────────────────────────── */
 kinetix_socket_t servidor_aceptar_cliente(void) {
     struct sockaddr_in cliente;
+#ifdef _WIN32
     int tam = sizeof(cliente);
+#else
+    socklen_t tam = (socklen_t)sizeof(cliente);
+#endif
 
     kinetix_socket_t sock_cliente = accept(
         g_socket_escucha, (struct sockaddr *)&cliente, &tam);
@@ -150,6 +157,8 @@ void servidor_cerrar(void) {
         closesocket(g_socket_escucha);
         g_socket_escucha = KINETIX_SOCKET_INVALIDO;
     }
+#ifdef _WIN32
     WSACleanup();
+#endif
     LOG_I("Servidor cerrado.");
 }

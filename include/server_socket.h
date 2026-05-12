@@ -1,10 +1,24 @@
 #ifndef KINETIX_SERVER_SOCKET_H
 #define KINETIX_SERVER_SOCKET_H
 
+#ifdef _WIN32
 #include <winsock2.h>
+#include <ws2tcpip.h>
 
 typedef SOCKET kinetix_socket_t;
 #define KINETIX_SOCKET_INVALIDO INVALID_SOCKET
+#else
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <unistd.h>
+
+typedef int kinetix_socket_t;
+#define KINETIX_SOCKET_INVALIDO (-1)
+#define SOCKET_ERROR (-1)
+#define closesocket close
+#endif
 
 int servidor_iniciar(int puerto);
 kinetix_socket_t servidor_aceptar_cliente(void);

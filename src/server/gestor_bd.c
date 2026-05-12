@@ -476,6 +476,45 @@ int actualizar_vehiculo(Vehiculo v) {
     return SQLITE_OK;
 }
 
+int actualizar_alquiler(Alquiler a) {
+    if (!db) return SQLITE_MISUSE;
+
+    sqlite3_stmt *stmt = NULL;
+    const char *sql =
+        "UPDATE ALQUILER "
+        "SET id_usuario=?, id_vehiculo=?, id_estacion_origen=?, id_estacion_destino=?, "
+        "fecha_inicio=?, fecha_fin=?, coste_total=? "
+        "WHERE id_alquiler=?;";
+
+    int rc = sqlite3_prepare_v2(db, sql, -1, &stmt, NULL);
+    if (rc != SQLITE_OK) return rc;
+
+    sqlite3_bind_int(stmt, 1, a.id_usuario);
+    sqlite3_bind_int(stmt, 2, a.id_vehiculo);
+    sqlite3_bind_int(stmt, 3, a.id_estacion_origen);
+
+    if (a.id_estacion_destino > 0)
+        sqlite3_bind_int(stmt, 4, a.id_estacion_destino);
+    else
+        sqlite3_bind_null(stmt, 4);
+
+    sqlite3_bind_text(stmt, 5, a.fecha_inicio, -1, SQLITE_TRANSIENT);
+
+    if (strlen(a.fecha_fin) > 0)
+        sqlite3_bind_text(stmt, 6, a.fecha_fin, -1, SQLITE_TRANSIENT);
+    else
+        sqlite3_bind_null(stmt, 6);
+
+    sqlite3_bind_double(stmt, 7, (double)a.coste_total);
+    sqlite3_bind_int(stmt, 8, a.id_alquiler);
+
+    rc = sqlite3_step(stmt);
+    sqlite3_finalize(stmt);
+    if (rc != SQLITE_DONE) return rc;
+    if (sqlite3_changes(db) == 0) return SQLITE_NOTFOUND;
+    return SQLITE_OK;
+}
+
 //Recuperacion de la base de datos
 
 static int obtener_total(const char *sql_count, int *total_out) {
