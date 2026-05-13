@@ -1,5 +1,11 @@
 #include <stdio.h>
 #include <stdlib.h>
+#ifdef _WIN32
+#include <windows.h>
+#include <process.h>
+#else
+#include <pthread.h>
+#endif
 #include "gestor_config.h"
 #include "gestor_log.h"
 #include "gestor_bd.h"
@@ -11,6 +17,26 @@
  *  Uso:  KinetiX_RemoteServer [ruta_config]
  *  Por defecto usa data/config.conf
  * ============================================================= */
+
+#ifdef _WIN32
+static unsigned __stdcall atender_cliente_thread_win(void *arg) {
+    kinetix_socket_t cliente = *((kinetix_socket_t *)arg);
+    free(arg);
+    servidor_atender_cliente(cliente);
+    LOG_I("Cliente desconectado. Esperando nuevo cliente...");
+    printf("\n  >> Cliente desconectado. Esperando...\n\n");
+    return 0;
+}
+#else
+static void *atender_cliente_thread(void *arg) {
+    kinetix_socket_t cliente = *((kinetix_socket_t *)arg);
+    free(arg);
+    servidor_atender_cliente(cliente);
+    LOG_I("Cliente desconectado. Esperando nuevo cliente...");
+    printf("\n  >> Cliente desconectado. Esperando...\n\n");
+    return NULL;
+}
+#endif
 
 int main(int argc, char *argv[]) {
 
@@ -50,9 +76,42 @@ int main(int argc, char *argv[]) {
             LOG_A("Error aceptando cliente. Reintentando...");
             continue;
         }
-        servidor_atender_cliente(cliente);
-        LOG_I("Cliente desconectado. Esperando nuevo cliente...");
-        printf("\n  >> Cliente desconectado. Esperando...\n\n");
+#ifdef _WIN32
+        kinetix_socket_t *cliente_ptr = malloc(sizeof(*cliente_ptr));
+        if (!cliente_ptr) {
+            LOG_E("No se pudo reservar memoria para el cliente.");
+            closesocket(cliente);
+            continue;
+        }
+        *cliente_ptr = cliente;
+
+        uintptr_t hilo = _beginthreadex(NULL, 0, atender_cliente_thread_win, cliente_ptr, 0, NULL);
+        if (hilo == 0) {
+            LOG_E("No se pudo crear el hilo para el cliente.");
+            closesocket(cliente);
+            free(cliente_ptr);
+            continue;
+        }
+        CloseHandle((HANDLE)hilo);
+#else
+        kinetix_socket_t *cliente_ptr = malloc(sizeof(*cliente_ptr));
+        if (!cliente_ptr) {
+            LOG_E("No se pudo reservar memoria para el cliente.");
+            closesocket(cliente);
+            continue;
+        }
+        *cliente_ptr = cliente;
+
+        pthread_t hilo;
+        int err = pthread_create(&hilo, NULL, atender_cliente_thread, cliente_ptr);
+        if (err != 0) {
+            LOG_E("No se pudo crear el hilo para el cliente.");
+            closesocket(cliente);
+            free(cliente_ptr);
+            continue;
+        }
+        pthread_detach(hilo);
+#endif
     }
 
     /* ── 6. Limpieza ─────────────────────────────────────── */

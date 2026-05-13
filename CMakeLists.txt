@@ -32,9 +32,13 @@ add_executable(KinetiX_Server
         ${SOURCES_COMUNES}
         include/informes.h
 )
+
 target_include_directories(KinetiX_Server PRIVATE include)
 if (WIN32)
     target_link_libraries(KinetiX_Server PRIVATE ws2_32)
+else()
+    find_package(Threads REQUIRED)
+    target_link_libraries(KinetiX_Server PRIVATE Threads::Threads)
 endif()
 
 file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/data)
