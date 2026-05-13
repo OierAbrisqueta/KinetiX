@@ -1,11 +1,60 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#ifdef _WIN32
+#include <windows.h>
+#else
+#include <pthread.h>
+#endif
 #include "gestor_bd.h"
 #include "modelos.h"
 #include "informes.h"
 
 static sqlite3 *db = NULL;
+#ifdef _WIN32
+static CRITICAL_SECTION db_mutex;
+#else
+static pthread_mutex_t db_mutex = PTHREAD_MUTEX_INITIALIZER;
+#endif
+static int db_mutex_inicializado = 0;
+
+static void bd_mutex_inicializar(void) {
+    if (db_mutex_inicializado) return;
+#ifdef _WIN32
+    InitializeCriticalSection(&db_mutex);
+#else
+    pthread_mutex_init(&db_mutex, NULL);
+#endif
+    db_mutex_inicializado = 1;
+}
+
+void bd_mutex_lock(void) {
+    bd_mutex_inicializar();
+#ifdef _WIN32
+    EnterCriticalSection(&db_mutex);
+#else
+    pthread_mutex_lock(&db_mutex);
+#endif
+}
+
+void bd_mutex_unlock(void) {
+    if (!db_mutex_inicializado) return;
+#ifdef _WIN32
+    LeaveCriticalSection(&db_mutex);
+#else
+    pthread_mutex_unlock(&db_mutex);
+#endif
+}
+
+static void bd_mutex_destruir(void) {
+    if (!db_mutex_inicializado) return;
+#ifdef _WIN32
+    DeleteCriticalSection(&db_mutex);
+#else
+    pthread_mutex_destroy(&db_mutex);
+#endif
+    db_mutex_inicializado = 0;
+}
 
 static int texto_vacio_o_espacios(const char *s) {
     if (!s) return 1;
@@ -143,6 +192,8 @@ int conectar_bd(const char *ruta_bd) {
     const char *ruta = (ruta_bd && strlen(ruta_bd) > 0)
                        ? ruta_bd : "data/kinetix.sqlite";
 
+    bd_mutex_inicializar();
+
     int rc = sqlite3_open(ruta, &db);
     if (rc != SQLITE_OK) {
         printf("[BD] Error: no se puede abrir '%s': %s\n",
@@ -179,6 +230,7 @@ void cerrar_bd(void) {
         db = NULL;
         printf("[BD] Conexion cerrada.\n");
     }
+    bd_mutex_destruir();
 }
 
 //Inserción en la base de datos
@@ -1125,4 +1177,29 @@ int stat_vehiculo(int id_vehiculo, float *bateria_out, double *minutos_out) {
 
     sqlite3_finalize(stmt);
     return SQLITE_OK;
+}
+
+static int ejecutar_sql_simple(const char *sql) {
+    if (!db || !sql) return SQLITE_MISUSE;
+    char *err_msg = NULL;
+    int rc = sqlite3_exec(db, sql, NULL, NULL, &err_msg);
+    if (rc != SQLITE_OK) {
+        printf("[BD] Error ejecutando SQL '%s': %s\n", sql, err_msg ? err_msg : "?");
+        sqlite3_free(err_msg);
+        return rc;
+    }
+    sqlite3_free(err_msg);
+    return SQLITE_OK;
+}
+
+int bd_begin_transaccion(void) {
+    return ejecutar_sql_simple("BEGIN IMMEDIATE;");
+}
+
+int bd_commit_transaccion(void) {
+    return ejecutar_sql_simple("COMMIT;");
+}
+
+int bd_rollback_transaccion(void) {
+    return ejecutar_sql_simple("ROLLBACK;");
 }

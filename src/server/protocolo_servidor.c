@@ -364,34 +364,56 @@ static void handle_alquilar(kinetix_socket_t s, const char *args) {
 
     int id_usuario  = atoi(c[0]);
     int id_vehiculo = atoi(c[1]);
+    int id_estacion_origen = atoi(c[2]);
 
+    int ok = 0;
+    int transaccion_iniciada = 0;
     Vehiculo v;
-    if (buscar_vehiculo(id_vehiculo, &v) != 0) { resp_simple(s, RESP_ERROR); return; }
-    if (v.estado != 'D') { resp_simple(s, RESP_ERROR); return; }
-    if (v.bateria <= (float)g_config.bateria_minima) { resp_simple(s, RESP_ERROR); return; }
-
     Usuario u;
-    if (buscar_usuario(id_usuario, &u) != 0) { resp_simple(s, RESP_ERROR); return; }
-    if (u.saldo <= 0.0f) { resp_simple(s, RESP_ERROR); return; }
-
     Alquiler a;
-    memset(&a, 0, sizeof(a));
-    a.id_usuario          = id_usuario;
-    a.id_vehiculo         = id_vehiculo;
-    a.id_estacion_origen  = atoi(c[2]);
-    a.id_estacion_destino = 0;
-    a.coste_total         = 0.0f;
 
-    time_t ahora = time(NULL);
-    struct tm *tm_info = localtime(&ahora);
-    strftime(a.fecha_inicio, sizeof(a.fecha_inicio), "%Y-%m-%d %H:%M:%S", tm_info);
-    strcpy(a.fecha_fin, "");
+    bd_mutex_lock();
+    if (bd_begin_transaccion() != SQLITE_OK) {
+        bd_mutex_unlock();
+        resp_simple(s, RESP_ERROR);
+        return;
+    }
+    transaccion_iniciada = 1;
 
-    if (insertar_alquiler(a) != 0) { resp_simple(s, RESP_ERROR); return; }
+    do {
+        if (buscar_vehiculo(id_vehiculo, &v) != 0) break;
+        if (v.estado != 'D') break;
+        if (v.bateria <= (float)g_config.bateria_minima) break;
 
-    v.estado = 'R';
-    v.id_estacion = 0;
-    actualizar_vehiculo(v);
+        if (buscar_usuario(id_usuario, &u) != 0) break;
+        if (u.saldo <= 0.0f) break;
+
+        memset(&a, 0, sizeof(a));
+        a.id_usuario          = id_usuario;
+        a.id_vehiculo         = id_vehiculo;
+        a.id_estacion_origen  = id_estacion_origen;
+        a.id_estacion_destino = 0;
+        a.coste_total         = 0.0f;
+
+        time_t ahora = time(NULL);
+        struct tm *tm_info = localtime(&ahora);
+        strftime(a.fecha_inicio, sizeof(a.fecha_inicio), "%Y-%m-%d %H:%M:%S", tm_info);
+        strcpy(a.fecha_fin, "");
+
+        if (insertar_alquiler(a) != 0) break;
+
+        v.estado = 'R';
+        v.id_estacion = 0;
+        if (actualizar_vehiculo(v) != 0) break;
+
+        if (bd_commit_transaccion() != SQLITE_OK) break;
+        ok = 1;
+    } while (0);
+
+    if (!ok && transaccion_iniciada) bd_rollback_transaccion();
+    bd_mutex_unlock();
+
+    if (!ok) { resp_simple(s, RESP_ERROR); return; }
 
     char resp[64];
     snprintf(resp, sizeof(resp), RESP_OK " %d\n", a.id_alquiler);
@@ -411,9 +433,28 @@ static void handle_devolver(kinetix_socket_t s, const char *args) {
     int id_alquiler         = atoi(c[0]);
     int id_estacion_destino = atoi(c[1]);
 
+    int ok = 0;
+    int transaccion_iniciada = 0;
     Alquiler *lista = NULL;
     int n = 0;
-    listar_alquileres(&lista, &n);
+    Alquiler al_copia;
+    Vehiculo v;
+
+    bd_mutex_lock();
+    if (bd_begin_transaccion() != SQLITE_OK) {
+        bd_mutex_unlock();
+        resp_simple(s, RESP_ERROR);
+        return;
+    }
+    transaccion_iniciada = 1;
+
+    if (listar_alquileres(&lista, &n) != 0 || n == 0) {
+        if (transaccion_iniciada) bd_rollback_transaccion();
+        bd_mutex_unlock();
+        free(lista);
+        resp_simple(s, RESP_ERROR);
+        return;
+    }
 
     Alquiler *al = NULL;
     for (int i = 0; i < n; i++) {
@@ -422,10 +463,15 @@ static void handle_devolver(kinetix_socket_t s, const char *args) {
             break;
         }
     }
-    if (!al) { free(lista); resp_simple(s, RESP_ERROR); return; }
+    if (!al) {
+        if (transaccion_iniciada) bd_rollback_transaccion();
+        bd_mutex_unlock();
+        free(lista);
+        resp_simple(s, RESP_ERROR);
+        return;
+    }
 
-    // Copia local para poder liberar la lista con seguridad.
-    Alquiler al_copia = *al;
+    al_copia = *al;
     free(lista);
 
     time_t ahora = time(NULL);
@@ -441,7 +487,6 @@ static void handle_devolver(kinetix_socket_t s, const char *args) {
     tm_ini.tm_isdst = -1;
     double minutos = difftime(ahora, mktime(&tm_ini)) / 60.0;
 
-    Vehiculo v;
     float tarifa = g_config.tarifa_bici_min;
     if (buscar_vehiculo(al_copia.id_vehiculo, &v) == 0 && v.tipo == 'P')
         tarifa = g_config.tarifa_patinete_min;
@@ -449,13 +494,26 @@ static void handle_devolver(kinetix_socket_t s, const char *args) {
     al_copia.coste_total         = (float)(minutos * tarifa);
     al_copia.id_estacion_destino = id_estacion_destino;
 
-    actualizar_alquiler(al_copia);
-
-    if (buscar_vehiculo(al_copia.id_vehiculo, &v) == 0) {
+    if (actualizar_alquiler(al_copia) != 0) {
+        ok = 0;
+    } else if (buscar_vehiculo(al_copia.id_vehiculo, &v) == 0) {
         v.estado = 'D';
         v.id_estacion = id_estacion_destino;
-        actualizar_vehiculo(v);
+        ok = (actualizar_vehiculo(v) == 0);
+    } else {
+        ok = 0;
     }
+
+    if (ok && bd_commit_transaccion() == SQLITE_OK) {
+        ok = 1;
+    } else {
+        ok = 0;
+    }
+
+    if (!ok && transaccion_iniciada) bd_rollback_transaccion();
+    bd_mutex_unlock();
+
+    if (!ok) { resp_simple(s, RESP_ERROR); return; }
 
     resp_simple(s, RESP_OK);
     LOG_I("Devolucion registrada via cliente.");

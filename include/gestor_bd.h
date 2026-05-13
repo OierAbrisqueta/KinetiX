@@ -8,6 +8,12 @@
 int  conectar_bd(const char *ruta_bd);
 void cerrar_bd(void);
 
+void bd_mutex_lock(void);
+void bd_mutex_unlock(void);
+int  bd_begin_transaccion(void);
+int  bd_commit_transaccion(void);
+int  bd_rollback_transaccion(void);
+
 int insertar_estacion(Estacion e, int *id_generado_out);
 int insertar_vehiculo(Vehiculo v, int *id_generado_out);
 int insertar_usuario(Usuario u, int *id_generado_out);
