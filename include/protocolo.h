@@ -42,6 +42,8 @@
 #define CMD_ALQUILAR            "ALQUILAR"
 #define CMD_DEVOLVER            "DEVOLVER"
 
+#define CMD_STAT  "STAT"
+
 /* ── Respuestas (servidor → cliente) ────────────────────────── */
 #define RESP_OK                 "OK"
 #define RESP_ERROR              "ERROR"

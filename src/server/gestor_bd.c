@@ -1096,3 +1096,33 @@ int ranking_uso_vehiculo(UsoVehiculo **lista_out, int *n_out, int top_n) {
     *n_out = i;
     return SQLITE_OK;
 }
+
+int stat_vehiculo(int id_vehiculo, float *bateria_out, double *minutos_out) {
+    if (!db || !bateria_out || !minutos_out) return -1;
+
+    //Primero obtenemos la batería del vehículo
+    Vehiculo v;
+    if (buscar_vehiculo(id_vehiculo, &v) != 0) return -1;
+    *bateria_out = v.bateria;
+
+    //Luego calculamos los minutos totales de uso
+    sqlite3_stmt *stmt = NULL;
+    const char *sql =
+        "SELECT COALESCE(SUM("
+        "(strftime('%s', fecha_fin) - strftime('%s', fecha_inicio)) / 60.0), 0.0) "
+        "FROM ALQUILER "
+        "WHERE id_vehiculo = ? AND fecha_fin IS NOT NULL;";
+
+    int rc = sqlite3_prepare_v2(db, sql, -1, &stmt, NULL);
+    if (rc != SQLITE_OK) return -1;
+
+    sqlite3_bind_int(stmt, 1, id_vehiculo);
+
+    if (sqlite3_step(stmt) == SQLITE_ROW)
+        *minutos_out = sqlite3_column_double(stmt, 0);
+    else
+        *minutos_out = 0.0;
+
+    sqlite3_finalize(stmt);
+    return SQLITE_OK;
+}

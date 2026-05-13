@@ -461,7 +461,34 @@ static void handle_devolver(kinetix_socket_t s, const char *args) {
     LOG_I("Devolucion registrada via cliente.");
 }
 
-/* ── Dispatcher principal ───────────────────────────────────── */
+static void handle_stat(kinetix_socket_t s, const char *args) {
+    if (!args) {
+        resp_simple(s, RESP_ERROR);
+        return;
+    }
+
+    int id_vehiculo = atoi(args);
+    float bateria   = 0.0f;
+    double minutos  = 0.0;
+
+    if (stat_vehiculo(id_vehiculo, &bateria, &minutos) != 0) {
+        resp_simple(s, RESP_NOT_FOUND);
+        return;
+    }
+
+    // Estimar km según tipo de vehículo
+    Vehiculo v;
+    double velocidad_media = 15.0;
+    if (buscar_vehiculo(id_vehiculo, &v) == 0 && v.tipo == 'P')
+        velocidad_media = 20.0;
+
+    double km_estimados = (minutos / 60.0) * velocidad_media;
+
+    char resp[128];
+    snprintf(resp, sizeof(resp), RESP_OK " %.1f|%.1f|%.2f\n",
+             bateria, minutos, km_estimados);
+    servidor_enviar(s, resp);
+}
 
 void procesar_comando(kinetix_socket_t cliente, const char *cmd) {
     char copia[PROTO_BUFF_SIZE];
@@ -479,25 +506,26 @@ void procesar_comando(kinetix_socket_t cliente, const char *cmd) {
         if (nl) *nl = '\0';
     }
 
-    if      (strcmp(nombre, CMD_LOGIN)           == 0) handle_login(cliente, args);
+    if (strcmp(nombre, CMD_LOGIN) == 0) handle_login(cliente, args);
     else if (strcmp(nombre, CMD_LIST_ESTACIONES) == 0) handle_list_estaciones(cliente);
-    else if (strcmp(nombre, CMD_GET_ESTACION)    == 0) handle_get_estacion(cliente, args);
-    else if (strcmp(nombre, CMD_ADD_ESTACION)    == 0) handle_add_estacion(cliente, args);
+    else if (strcmp(nombre, CMD_GET_ESTACION) == 0) handle_get_estacion(cliente, args);
+    else if (strcmp(nombre, CMD_ADD_ESTACION) == 0) handle_add_estacion(cliente, args);
     else if (strcmp(nombre, CMD_UPDATE_ESTACION) == 0) handle_update_estacion(cliente, args);
     else if (strcmp(nombre, CMD_DELETE_ESTACION) == 0) handle_delete_estacion(cliente, args);
-    else if (strcmp(nombre, CMD_LIST_VEHICULOS)  == 0) handle_list_vehiculos(cliente);
-    else if (strcmp(nombre, CMD_GET_VEHICULO)    == 0) handle_get_vehiculo(cliente, args);
-    else if (strcmp(nombre, CMD_ADD_VEHICULO)    == 0) handle_add_vehiculo(cliente, args);
+    else if (strcmp(nombre, CMD_LIST_VEHICULOS) == 0) handle_list_vehiculos(cliente);
+    else if (strcmp(nombre, CMD_GET_VEHICULO) == 0) handle_get_vehiculo(cliente, args);
+    else if (strcmp(nombre, CMD_ADD_VEHICULO) == 0) handle_add_vehiculo(cliente, args);
     else if (strcmp(nombre, CMD_UPDATE_VEHICULO) == 0) handle_update_vehiculo(cliente, args);
-    else if (strcmp(nombre, CMD_BAJA_VEHICULO)   == 0) handle_baja_vehiculo(cliente, args);
-    else if (strcmp(nombre, CMD_LIST_USUARIOS)   == 0) handle_list_usuarios(cliente);
-    else if (strcmp(nombre, CMD_GET_USUARIO)     == 0) handle_get_usuario(cliente, args);
-    else if (strcmp(nombre, CMD_ADD_USUARIO)     == 0) handle_add_usuario(cliente, args);
-    else if (strcmp(nombre, CMD_UPDATE_USUARIO)  == 0) handle_update_usuario(cliente, args);
-    else if (strcmp(nombre, CMD_BAJA_USUARIO)    == 0) handle_baja_usuario(cliente, args);
+    else if (strcmp(nombre, CMD_BAJA_VEHICULO) == 0) handle_baja_vehiculo(cliente, args);
+    else if (strcmp(nombre, CMD_LIST_USUARIOS) == 0) handle_list_usuarios(cliente);
+    else if (strcmp(nombre, CMD_GET_USUARIO) == 0) handle_get_usuario(cliente, args);
+    else if (strcmp(nombre, CMD_ADD_USUARIO) == 0) handle_add_usuario(cliente, args);
+    else if (strcmp(nombre, CMD_UPDATE_USUARIO) == 0) handle_update_usuario(cliente, args);
+    else if (strcmp(nombre, CMD_BAJA_USUARIO) == 0) handle_baja_usuario(cliente, args);
     else if (strcmp(nombre, CMD_LIST_ALQUILERES) == 0) handle_list_alquileres(cliente);
-    else if (strcmp(nombre, CMD_ALQUILAR)        == 0) handle_alquilar(cliente, args);
-    else if (strcmp(nombre, CMD_DEVOLVER)        == 0) handle_devolver(cliente, args);
+    else if (strcmp(nombre, CMD_ALQUILAR) == 0) handle_alquilar(cliente, args);
+    else if (strcmp(nombre, CMD_DEVOLVER) == 0) handle_devolver(cliente, args);
+    else if (strcmp(nombre, CMD_STAT) == 0) handle_stat(cliente, args);
     else {
         char log_msg[128];
         snprintf(log_msg, sizeof(log_msg), "Comando desconocido: %s", nombre);

@@ -40,4 +40,6 @@ int informe_recaudacion_por_tipo(ResumenPorTipo out[2]);
 int informe_recaudacion_por_dia(ResumenPorDia **lista_out, int *n_out);
 int ranking_uso_vehiculo(UsoVehiculo **lista_out, int *n_out, int top_n);
 
+int stat_vehiculo(int id_vehiculo, float *bateria_out, double *minutos_out);
+
 #endif
