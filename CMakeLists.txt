@@ -1,8 +1,11 @@
 cmake_minimum_required(VERSION 3.20)
-project(KinetiX C)
+project(KinetiX C CXX)
 
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_STANDARD_REQUIRED ON)
+
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 set(SOURCES_COMUNES
         src/server/gestor_bd.c
@@ -39,6 +42,19 @@ if (WIN32)
 else()
     find_package(Threads REQUIRED)
     target_link_libraries(KinetiX_Server PRIVATE Threads::Threads)
+endif()
+
+# Ejecutable 3: cliente remoto (Fase 2)
+add_executable(KinetiX_Client
+        src/client/main_client.cpp
+)
+
+target_include_directories(KinetiX_Client PRIVATE include src/client)
+if(WIN32)
+    target_link_libraries(KinetiX_Client PRIVATE ws2_32)
+else()
+    find_package(Threads REQUIRED)
+    target_link_libraries(KinetiX_Client PRIVATE Threads::Threads)
 endif()
 
 file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/data)
