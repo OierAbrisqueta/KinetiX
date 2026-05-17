@@ -53,7 +53,7 @@ public:
 
 
 //Estacion
-struct EstacionCliente {
+struct Estacion {
     int   id_estacion;
     char  nombre[51];
     char  direccion[101];
@@ -65,7 +65,7 @@ struct EstacionCliente {
     float getOcupacion() const;
     void  descripcion(char *buf, int tam) const;
 
-    static EstacionCliente fromString(const char *linea);
+    static Estacion fromString(const char *linea);
 };
 
 
