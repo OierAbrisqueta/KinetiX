@@ -1,21 +1,28 @@
-//
-// Created by Oier Abrisqueta on 14/5/26.
-//
-//
-// Created by Oier Abrisqueta on 14/5/26.
-//
-
 #include "modelos_cliente.h"
 #include "protocolo.h"
+#ifdef _WIN32
 #include <winsock2.h>
 #include <ws2tcpip.h>
+#pragma comment(lib, "ws2_32.lib")
+#else
+#include <arpa/inet.h>
+#include <netinet/in.h>
+#include <sys/socket.h>
+#include <sys/types.h>
+#include <unistd.h>
+#include <signal.h>
+#endif
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
 
-#pragma comment(lib, "ws2_32.lib")
-
+#ifdef _WIN32
 static SOCKET g_sock = INVALID_SOCKET;
+#else
+using SocketHandle = int;
+static const SocketHandle INVALID_SOCKET = -1;
+static SocketHandle g_sock = INVALID_SOCKET;
+#endif
 
 static int   g_id_usuario      = 0;
 static char  g_nombre[64]      = {0};
@@ -26,8 +33,12 @@ static int   g_vehiculo_activo = 0;
 
 // Conecta al servidor. Devuelve 0 si ok, -1 si error.
 int net_conectar(const char *ip, int puerto) {
+#ifdef _WIN32
     WSADATA wsa;
     WSAStartup(MAKEWORD(2, 2), &wsa);
+#else
+    signal(SIGPIPE, SIG_IGN);
+#endif
 
     g_sock = socket(AF_INET, SOCK_STREAM, 0);
     if (g_sock == INVALID_SOCKET) return -1;
@@ -39,7 +50,11 @@ int net_conectar(const char *ip, int puerto) {
     inet_pton(AF_INET, ip, &srv.sin_addr);
 
     if (connect(g_sock, (struct sockaddr *)&srv, sizeof(srv)) != 0) {
+#ifdef _WIN32
         closesocket(g_sock);
+#else
+        close(g_sock);
+#endif
         return -1;
     }
     return 0;
@@ -74,7 +89,11 @@ void net_cmd(const char *comando, char *buf, int tam) {
 
 
 void ui_limpiar(void) {
+#ifdef _WIN32
     system("cls");
+#else
+    system("clear");
+#endif
 }
 
 void ui_pausa(void) {
@@ -518,7 +537,11 @@ int main(void) {
         net_cmd(CMD_EXIT, resp, sizeof(resp));
     }
 
+#ifdef _WIN32
     closesocket(g_sock);
     WSACleanup();
+#else
+    close(g_sock);
+#endif
     return 0;
 }
