@@ -47,6 +47,7 @@ endif()
 # Ejecutable 3: cliente remoto (Fase 2)
 add_executable(KinetiX_Client
         src/client/main_client.cpp
+        src/client/modelos_cliente.cpp
         include/modelos_cliente.h
 )
 

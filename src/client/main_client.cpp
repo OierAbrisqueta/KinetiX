@@ -1,146 +1,524 @@
 //
 // Created by Oier Abrisqueta on 14/5/26.
 //
+//
+// Created by Oier Abrisqueta on 14/5/26.
+//
+
 #include "modelos_cliente.h"
-#include <string.h>
-#include <stdlib.h>
-#include <stdio.h>
+#include "protocolo.h"
+#include <winsock2.h>
+#include <ws2tcpip.h>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
 
-//Vehiculo
-Vehiculo::Vehiculo(int id, char tipo, float bateria, int id_estacion, char estado) {
-    this->id_vehiculo = id;
-    this->tipo = tipo;
-    this->bateria = bateria;
-    this->id_estacion = id_estacion;
-    this->estado = estado;
-}
+#pragma comment(lib, "ws2_32.lib")
 
-float Vehiculo::calcularCoste(double minutos) const {
-    return minutos * getTarifaMinuto();
-}
+static SOCKET g_sock = INVALID_SOCKET;
 
-int Vehiculo::estaDisponible() const {
-    return this->estado == 'D' && this->bateria > 15;
-}
-void Vehiculo::descripcion(char *buf, int tam) const {
-    char tipo_nombre[16];
-    char estado_nombre[16];
-    getTipoNombre(tipo_nombre, sizeof(tipo_nombre));
-    estadoLegible(estado_nombre, sizeof(estado_nombre));
+static int   g_id_usuario      = 0;
+static char  g_nombre[64]      = {0};
+static char  g_dni[32]         = {0};
+static float g_saldo           = 0.0f;
+static int   g_alquiler_activo = 0;  // 0 = sin alquiler en curso
+static int   g_vehiculo_activo = 0;
 
-    snprintf(buf, tam,
-             "%d, %s, Bateria: %d%%, Estado: %s, Estacion: %d",
-             id_vehiculo,
-             tipo_nombre,
-             (int)bateria,
-             estado_nombre,
-             id_estacion);
-}
+// Conecta al servidor. Devuelve 0 si ok, -1 si error.
+int net_conectar(const char *ip, int puerto) {
+    WSADATA wsa;
+    WSAStartup(MAKEWORD(2, 2), &wsa);
 
-//IAG: Metodo generado con inteligencia artificial
-std::unique_ptr<Vehiculo> Vehiculo::fromString(const char *linea) {
-    int id = 0;
-    char tipo[2] = {0};
-    float bateria = 0.0f;
-    int id_estacion = 0;
-    char estado[2] = {0};
+    g_sock = socket(AF_INET, SOCK_STREAM, 0);
+    if (g_sock == INVALID_SOCKET) return -1;
 
-    int campos = sscanf(linea, "%d|%1[BP]|%f|%d|%1[DRMB]",
-                        &id, tipo, &bateria, &id_estacion, estado);
+    struct sockaddr_in srv;
+    memset(&srv, 0, sizeof(srv));
+    srv.sin_family = AF_INET;
+    srv.sin_port   = htons(puerto);
+    inet_pton(AF_INET, ip, &srv.sin_addr);
 
-    if (campos != 5) return nullptr;
-
-    if (tipo[0] == 'B')
-        return std::make_unique<Bicicleta>(id, bateria, id_estacion, estado[0]);
-    if (tipo[0] == 'P')
-        return std::make_unique<Patinete> (id, bateria, id_estacion, estado[0]);
-
-    return nullptr;
-}
-
-void Vehiculo::estadoLegible(char *buf, int tam) const {
-    switch (estado) {
-        case 'D': strncpy(buf, "Disponible", tam); break;
-        case 'R': strncpy(buf, "Reservado", tam); break;
-        case 'M': strncpy(buf, "Mantenimiento", tam); break;
-        case 'B': strncpy(buf, "Baja", tam); break;
-        default: strncpy(buf, "Desconocido", tam); break;
+    if (connect(g_sock, (struct sockaddr *)&srv, sizeof(srv)) != 0) {
+        closesocket(g_sock);
+        return -1;
     }
-    buf[tam - 1] = '\0';
+    return 0;
 }
 
-//bicicleta
-Bicicleta::Bicicleta(int id, float bateria, int id_estacion, char estado)
-    : Vehiculo(id, 'B', bateria, id_estacion, estado) {}
-
-float Bicicleta::getTarifaMinuto() const {
-    return 0.05f;
+// Envia un mensaje al servidor
+void net_enviar(const char *msg) {
+    send(g_sock, msg, strlen(msg), 0);
 }
 
-void  Bicicleta::getTipoNombre(char *buf, int tam) const {
-    strncpy(buf, "Bicicleta", tam);
-    buf[tam - 1] = '\0';
+// Recibe una linea del servidor (hasta '\n')
+void net_recibir_linea(char *buf, int tam) {
+    int i = 0;
+    while (i < tam - 1) {
+        char c;
+        if (recv(g_sock, &c, 1, 0) <= 0) break;
+        buf[i++] = c;
+        if (c == '\n') break;
+    }
+    buf[i] = '\0';
+    // Quitar el salto de linea del final
+    if (i > 0 && buf[i-1] == '\n') buf[i-1] = '\0';
 }
 
-//Patinete
-Patinete::Patinete(int id, float bateria, int id_estacion, char estado)
-    : Vehiculo(id, 'P', bateria, id_estacion, estado) {}
-
-float Patinete::getTarifaMinuto() const {
-    return 0.07f;
+// Envia un comando y guarda la primera linea de respuesta en buf
+void net_cmd(const char *comando, char *buf, int tam) {
+    char msg[PROTO_BUFF_SIZE];
+    snprintf(msg, sizeof(msg), "%s\n", comando);
+    net_enviar(msg);
+    net_recibir_linea(buf, tam);
 }
 
-void  Patinete::getTipoNombre(char *buf, int tam) const {
-    strncpy(buf, "Patinete", tam);
-    buf[tam - 1] = '\0';
+
+void ui_limpiar(void) {
+    system("cls");
 }
 
-//Estacion
-float Estacion::getOcupacion() const {
-    if (capacidad_max == 0) return 0;
-    float devolver = 100.0f * (float)(capacidad_max - disponibilidad_actual)/(float)capacidad_max;
-    return devolver;
-}
-void  Estacion::descripcion(char *buf, int tam) const {
-    snprintf(buf, tam,
-             "%d, %s, Libres: %d/%d, Ocupacion: %d%%",
-             id_estacion,
-             nombre,
-             disponibilidad_actual,
-             capacidad_max,
-             (int)getOcupacion());
+void ui_pausa(void) {
+    printf("\n  ................................................\n");
+    printf("\n  Pulse Enter para continuar...");
+    int c;
+    while ((c = getchar()) != '\n' && c != EOF);
 }
 
-Estacion Estacion::fromString(const char *linea) {
-    Estacion e{};
+void menu_banner(void) {
+    printf("\n");
+    printf("  ================================================\n");
+    printf("\n");
+    printf("    K I N E T I X\n");
+    printf("\n");
+    printf("    Gestion de Flota  .  Cliente Remoto\n");
+    printf("\n");
+    printf("  ================================================\n");
+    printf("\n");
+}
 
-    //Parseamos campo por campo
-    char copia[256];
-    strncpy(copia, linea, sizeof(copia) - 1);
-    copia[sizeof(copia) - 1] = '\0';
+// Limpia el buffer de teclado
+static void limpiar_buffer(void) {
+    int c;
+    while ((c = getchar()) != '\n' && c != EOF) {}
+}
 
-    char *campos[7];
-    int n = 0;
-    char *item = copia;
+// Lee un entero en un rango. Valida que sea un numero y este en rango.
+int ui_leer_int(const char *msg, int min, int max) {
+    char buf[64];
+    int  valor;
+    char extra;
 
-    campos[n++] = item;
-    while (*item && n < 7) {
-        if (*item == '|') {
-            *item = '\0';
-            campos[n++] = item + 1;
+    while (1) {
+        printf("  %s [%d-%d]: ", msg, min, max);
+
+        if (!fgets(buf, sizeof(buf), stdin)) continue;
+
+        // Si no cabe en el buffer, limpiamos el resto
+        if (strchr(buf, '\n') == NULL) limpiar_buffer();
+
+        // Verificar que sea un entero sin caracteres extra
+        if (sscanf(buf, " %d %c", &valor, &extra) != 1) {
+            printf("  Error: Debes introducir un entero valido sin letras.\n");
+            continue;
         }
-        item++;
+
+        if (valor < min || valor > max) {
+            printf("  Error: El numero debe estar entre %d y %d.\n", min, max);
+            continue;
+        }
+
+        return valor;
+    }
+}
+
+// Lee una cadena de texto
+void ui_leer_string(const char *msg, char *buf, int max) {
+    printf("  %s:  ", msg);
+    if (fgets(buf, max, stdin)) {
+        int len = (int)strlen(buf);
+        if (len > 0 && buf[len-1] == '\n') {
+            buf[len-1] = '\0';
+        } else {
+            limpiar_buffer();
+        }
+    } else if (max > 0) {
+        buf[0] = '\0';
+    }
+}
+
+
+// Muestra el listado de todas las estaciones
+static void ver_estaciones(void) {
+    ui_limpiar();
+    printf("\n  --- Listado de estaciones ---\n");
+    printf("  ................................................\n\n");
+
+    // Pedimos la lista al servidor
+    net_enviar(CMD_LIST_ESTACIONES "\n");
+
+    char buf[32];
+    net_recibir_linea(buf, sizeof(buf));
+    int n = atoi(buf);
+
+    if (n == 0) {
+        printf("  No hay estaciones registradas.\n");
+        ui_pausa();
+        return;
     }
 
-    if (n < 7) return e;
+    printf("  %-6s  %-25s  %-10s  %s\n", "ID", "Nombre", "Libres", "Ocupacion");
+    printf("  ------  -------------------------  ----------  ---------\n");
 
-    e.id_estacion = atoi(campos[0]);
-    strncpy(e.nombre, campos[1], sizeof(e.nombre) - 1);
-    strncpy(e.direccion, campos[2], sizeof(e.direccion) - 1);
-    e.coord_x = (float)atof(campos[3]);
-    e.coord_y = (float)atof(campos[4]);
-    e.capacidad_max = atoi(campos[5]);
-    e.disponibilidad_actual = atoi(campos[6]);
+    for (int i = 0; i < n; i++) {
+        char linea[PROTO_BUFF_SIZE];
+        net_recibir_linea(linea, sizeof(linea));
 
-    return e;
+        Estacion e = Estacion::fromString(linea);
+
+        char libres[16];
+        snprintf(libres, sizeof(libres), "%d/%d",
+                 e.disponibilidad_actual, e.capacidad_max);
+
+        printf("  %-6d  %-25s  %-10s  %d%%\n",
+               e.id_estacion, e.nombre, libres, (int)e.getOcupacion());
+    }
+
+    printf("  ................................................\n");
+    printf("  Total: %d estaciones.\n", n);
+    ui_pausa();
+}
+
+// Muestra los vehiculos disponibles para alquilar
+static void ver_vehiculos_disponibles(void) {
+    ui_limpiar();
+    printf("\n  --- Vehiculos disponibles ---\n");
+    printf("  ................................................\n\n");
+
+    net_enviar(CMD_LIST_VEHICULOS "\n");
+
+    char buf[32];
+    net_recibir_linea(buf, sizeof(buf));
+    int n = atoi(buf);
+
+    printf("  %-6s  %-12s  %-10s  %-10s  %s\n",
+           "ID", "Tipo", "Bateria", "Estacion", "Tarifa/min");
+    printf("  ------  ------------  ----------  ----------  ----------\n");
+
+    int mostrados = 0;
+    for (int i = 0; i < n; i++) {
+        char linea[PROTO_BUFF_SIZE];
+        net_recibir_linea(linea, sizeof(linea));
+
+        // Parsear: id|tipo|bateria|id_estacion|estado
+        int id, id_est;
+        char tipo[2] = {0}, estado[2] = {0};
+        float bateria;
+        sscanf(linea, "%d|%1s|%f|%d|%1s", &id, tipo, &bateria, &id_est, estado);
+
+        // Solo mostramos los disponibles y con bateria suficiente
+        if (estado[0] == 'D' && bateria > 15) {
+            const char *nombre_tipo = (tipo[0] == 'B') ? "Bicicleta" : "Patinete";
+            float tarifa = (tipo[0] == 'B') ? 0.05f : 0.07f;
+            printf("  %-6d  %-12s  %-9.1f%%  %-10d  %.2f EUR\n",
+                   id, nombre_tipo, bateria, id_est, tarifa);
+            mostrados++;
+        }
+    }
+
+    if (mostrados == 0)
+        printf("  No hay vehiculos disponibles en este momento.\n");
+
+    printf("  ................................................\n");
+    printf("  Total disponibles: %d vehiculos.\n", mostrados);
+    ui_pausa();
+}
+
+// Permite al usuario alquilar un vehiculo
+static void alquilar(void) {
+    ui_limpiar();
+    printf("\n  --- Alquilar vehiculo ---\n");
+    printf("  ................................................\n\n");
+
+    // Comprobamos que no tenga ya un alquiler en curso
+    if (g_alquiler_activo != 0) {
+        printf("  Ya tienes un alquiler en curso (ID: %d).\n", g_alquiler_activo);
+        printf("  Devuelve el vehiculo actual antes de alquilar otro.\n");
+        ui_pausa();
+        return;
+    }
+
+    // Comprobamos que tenga saldo
+    if (g_saldo <= 0.0f) {
+        printf("  Saldo insuficiente (%.2f EUR).\n", g_saldo);
+        printf("  Recarga tu saldo para poder alquilar.\n");
+        ui_pausa();
+        return;
+    }
+
+    // Mostramos los vehiculos disponibles para que el usuario elija
+    net_enviar(CMD_LIST_VEHICULOS "\n");
+    char buf[32];
+    net_recibir_linea(buf, sizeof(buf));
+    int n = atoi(buf);
+
+    printf("  %-6s  %-12s  %-10s  %-10s  %s\n",
+           "ID", "Tipo", "Bateria", "Estacion", "Tarifa/min");
+    printf("  ------  ------------  ----------  ----------  ----------\n");
+
+    int disponibles = 0;
+    for (int i = 0; i < n; i++) {
+        char linea[PROTO_BUFF_SIZE];
+        net_recibir_linea(linea, sizeof(linea));
+
+        int id, id_est;
+        char tipo[2] = {0}, estado[2] = {0};
+        float bateria;
+        sscanf(linea, "%d|%1s|%f|%d|%1s", &id, tipo, &bateria, &id_est, estado);
+
+        if (estado[0] == 'D' && bateria > 15) {
+            const char *nombre_tipo = (tipo[0] == 'B') ? "Bicicleta" : "Patinete";
+            float tarifa = (tipo[0] == 'B') ? 0.05f : 0.07f;
+            printf("  %-6d  %-12s  %-9.1f%%  %-10d  %.2f EUR\n",
+                   id, nombre_tipo, bateria, id_est, tarifa);
+            disponibles++;
+        }
+    }
+
+    if (disponibles == 0) {
+        printf("  No hay vehiculos disponibles en este momento.\n");
+        ui_pausa();
+        return;
+    }
+
+    printf("\n");
+    int id_vehiculo = ui_leer_int("ID del vehiculo a alquilar", 1, 99999);
+    int id_estacion = ui_leer_int("ID de la estacion de origen", 1, 99999);
+
+    // Enviamos el comando de alquiler al servidor
+    char comando[128];
+    snprintf(comando, sizeof(comando), CMD_ALQUILAR " %d|%d|%d",
+             g_id_usuario, id_vehiculo, id_estacion);
+
+    char resp[64];
+    net_cmd(comando, resp, sizeof(resp));
+
+    if (strncmp(resp, RESP_OK, strlen(RESP_OK)) == 0) {
+        int id_alquiler = 0;
+        sscanf(resp, "OK %d", &id_alquiler);
+        g_alquiler_activo = id_alquiler;
+        g_vehiculo_activo = id_vehiculo;
+        printf("\n  Alquiler iniciado correctamente.\n");
+        printf("  ID de alquiler: %d\n", id_alquiler);
+        printf("  Buen viaje!\n");
+    } else {
+        printf("\n  Error al iniciar el alquiler.\n");
+        printf("  Comprueba que el ID del vehiculo y la estacion sean correctos.\n");
+    }
+    ui_pausa();
+}
+
+// Permite al usuario devolver el vehiculo que tiene alquilado
+static void devolver(void) {
+    ui_limpiar();
+    printf("\n  --- Devolver vehiculo ---\n");
+    printf("  ................................................\n\n");
+
+    if (g_alquiler_activo == 0) {
+        printf("  No tienes ningun alquiler en curso.\n");
+        ui_pausa();
+        return;
+    }
+
+    printf("  Alquiler activo  : ID %d\n", g_alquiler_activo);
+    printf("  Vehiculo en uso  : ID %d\n\n", g_vehiculo_activo);
+
+    int id_estacion = ui_leer_int("ID de la estacion de destino", 1, 99999);
+
+    // Confirmacion antes de devolver
+    printf("\n  Confirmar devolucion en estacion %d (s/n): ", id_estacion);
+    char conf[8];
+    fgets(conf, sizeof(conf), stdin);
+    if (conf[0] != 's' && conf[0] != 'S') {
+        printf("  Operacion cancelada.\n");
+        ui_pausa();
+        return;
+    }
+
+    char comando[128];
+    snprintf(comando, sizeof(comando), CMD_DEVOLVER " %d|%d",
+             g_alquiler_activo, id_estacion);
+
+    char resp[64];
+    net_cmd(comando, resp, sizeof(resp));
+
+    if (strncmp(resp, RESP_OK, strlen(RESP_OK)) == 0) {
+        printf("\n  Vehiculo devuelto correctamente.\n");
+        g_alquiler_activo = 0;
+        g_vehiculo_activo = 0;
+    } else {
+        printf("\n  Error al devolver el vehiculo. Intentalo de nuevo.\n");
+    }
+    ui_pausa();
+}
+
+// Muestra el historial de alquileres del usuario actual
+static void mis_alquileres(void) {
+    ui_limpiar();
+    printf("\n  --- Mis alquileres ---\n");
+    printf("  ................................................\n\n");
+
+    net_enviar(CMD_LIST_ALQUILERES "\n");
+
+    char buf[32];
+    net_recibir_linea(buf, sizeof(buf));
+    int n = atoi(buf);
+
+    printf("  %-6s  %-8s  %-19s  %-19s  %s\n",
+           "ID", "Vehic.", "Inicio", "Fin", "Coste");
+    printf("  ------  --------  -------------------  -------------------  --------\n");
+
+    int total = 0;
+    for (int i = 0; i < n; i++) {
+        char linea[PROTO_BUFF_SIZE];
+        net_recibir_linea(linea, sizeof(linea));
+
+        // Parsear: id|id_u|id_v|est_orig|est_dest|f_ini|f_fin|coste
+        int id_al, id_u, id_v, est_o, est_d;
+        char f_ini[32], f_fin[32];
+        float coste;
+        sscanf(linea, "%d|%d|%d|%d|%d|%[^|]|%[^|]|%f",
+               &id_al, &id_u, &id_v, &est_o, &est_d, f_ini, f_fin, &coste);
+
+        // Filtramos solo los del usuario actual
+        if (id_u == g_id_usuario) {
+            const char *fin = (strlen(f_fin) == 0 || strcmp(f_fin, "-") == 0)
+                              ? "En curso" : f_fin;
+            printf("  %-6d  %-8d  %-19s  %-19s  %.2f EUR\n",
+                   id_al, id_v, f_ini, fin, coste);
+            total++;
+        }
+    }
+
+    if (total == 0) printf("  No tienes alquileres registrados.\n");
+    printf("  ................................................\n");
+    printf("  Total: %d alquileres.\n", total);
+    ui_pausa();
+}
+
+
+int menu_autenticar(void) {
+    char dni[32], clave[64];
+    int intentos = 3;
+
+    while (intentos > 0) {
+        ui_limpiar();
+        menu_banner();
+        printf("  Acceso restringido. Identifiquese.\n\n");
+
+        ui_leer_string("DNI", dni, sizeof(dni));
+        ui_leer_string("Contrasena", clave, sizeof(clave));
+
+        // Enviamos el login al servidor
+        char comando[256];
+        snprintf(comando, sizeof(comando), CMD_LOGIN " %s|%s", dni, clave);
+
+        char resp[64];
+        net_cmd(comando, resp, sizeof(resp));
+
+        if (strcmp(resp, RESP_OK) == 0) {
+            // Login correcto: buscamos los datos del usuario para guardarlos
+            net_enviar(CMD_LIST_USUARIOS "\n");
+            char buf[32];
+            net_recibir_linea(buf, sizeof(buf));
+            int n = atoi(buf);
+
+            for (int i = 0; i < n; i++) {
+                char linea[PROTO_BUFF_SIZE];
+                net_recibir_linea(linea, sizeof(linea));
+                int id; char udni[32], unombre[64]; float saldo;
+                if (sscanf(linea, "%d|%31[^|]|%63[^|]|%f", &id, udni, unombre, &saldo) == 4) {
+                    if (strcmp(udni, dni) == 0) {
+                        g_id_usuario = id;
+                        strncpy(g_dni,    udni,    sizeof(g_dni)    - 1);
+                        strncpy(g_nombre, unombre, sizeof(g_nombre) - 1);
+                        g_saldo = saldo;
+                    }
+                }
+            }
+
+            printf("\n  Bienvenido, %s.\n", g_nombre);
+            ui_pausa();
+            return 1;
+        }
+
+        intentos--;
+        printf("\n  Credenciales incorrectas. Intentos restantes: %d\n", intentos);
+        if (intentos > 0) ui_pausa();
+    }
+
+    printf("\n  Demasiados intentos fallidos. El programa se cerrara.\n\n");
+    return 0;
+}
+
+void menu_principal(void) {
+    int opcion;
+    do {
+        ui_limpiar();
+        menu_banner();
+        printf("  Bienvenido, %s  |  Saldo: %.2f EUR\n", g_nombre, g_saldo);
+        if (g_alquiler_activo)
+            printf("  Alquiler activo: ID %d\n", g_alquiler_activo);
+        printf("\n");
+        printf("  ................................................\n");
+        printf("    [ 1 ]  Ver estaciones\n");
+        printf("    [ 2 ]  Ver vehiculos disponibles\n");
+        printf("    [ 3 ]  Alquilar vehiculo\n");
+        printf("    [ 4 ]  Devolver vehiculo\n");
+        printf("    [ 5 ]  Mis alquileres\n");
+        printf("  ................................................\n");
+        printf("    [ 0 ]  Cerrar sesion\n");
+        printf("\n");
+
+        opcion = ui_leer_int("Seleccione opcion", 0, 5);
+
+        switch (opcion) {
+            case 1: ver_estaciones();          break;
+            case 2: ver_vehiculos_disponibles(); break;
+            case 3: alquilar();                break;
+            case 4: devolver();                break;
+            case 5: mis_alquileres();          break;
+            case 0:
+                printf("\n  ................................................\n");
+                printf("  Hasta pronto, %s!\n\n", g_nombre);
+                break;
+            default:
+                printf("  Opcion no valida.\n");
+                ui_pausa();
+                break;
+        }
+    } while (opcion != 0);
+}
+
+int main(void) {
+    printf("\n  Conectando al servidor...\n");
+
+    if (net_conectar("127.0.0.1", 8080) != 0) {
+        printf("  Error: no se pudo conectar al servidor.\n");
+        printf("  Asegurate de que KinetiX_Server esta en ejecucion.\n\n");
+        return 1;
+    }
+
+    printf("  Conexion establecida.\n\n");
+
+    if (menu_autenticar()) {
+        menu_principal();
+
+        // Enviamos EXIT al cerrar sesion
+        char resp[32];
+        net_cmd(CMD_EXIT, resp, sizeof(resp));
+    }
+
+    closesocket(g_sock);
+    WSACleanup();
+    return 0;
 }
