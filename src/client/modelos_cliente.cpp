@@ -108,7 +108,7 @@ void  Estacion::descripcion(char *buf, int tam) const {
              (int)getOcupacion());
 }
 
-static Estacion fromString(const char *linea) {
+Estacion Estacion::fromString(const char *linea) {
     Estacion e{};
 
     //Parseamos campo por campo
