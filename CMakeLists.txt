@@ -48,7 +48,9 @@ endif()
 add_executable(KinetiX_Client
         src/client/main_client.cpp
         src/client/modelos_cliente.cpp
+        src/server/gestor_config.c
         include/modelos_cliente.h
+        include/gestor_config.h
 )
 
 target_include_directories(KinetiX_Client PRIVATE include src/client)

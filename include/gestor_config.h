@@ -1,6 +1,10 @@
 #ifndef KINETIX_GESTOR_CONFIG_H
 #define KINETIX_GESTOR_CONFIG_H
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #define CONFIG_MAX_VALOR  256
 #define CONFIG_RUTA_DEFAULT "data/config.conf"
 
@@ -23,5 +27,9 @@ extern Config g_config;
 
 int  config_cargar(const char *ruta);
 void config_mostrar(void);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

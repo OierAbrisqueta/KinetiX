@@ -17,7 +17,7 @@ int  bd_rollback_transaccion(void);
 int insertar_estacion(Estacion e, int *id_generado_out);
 int insertar_vehiculo(Vehiculo v, int *id_generado_out);
 int insertar_usuario(Usuario u, int *id_generado_out);
-int insertar_alquiler(Alquiler a);
+int insertar_alquiler(Alquiler a, int *id_generado_out);
 
 int borrar_estacion(int id);
 int dar_de_baja_vehiculo(int id);

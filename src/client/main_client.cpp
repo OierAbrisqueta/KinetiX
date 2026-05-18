@@ -1,5 +1,6 @@
 #include "modelos_cliente.h"
 #include "protocolo.h"
+#include "gestor_config.h"
 #ifdef _WIN32
 #include <winsock2.h>
 #include <ws2tcpip.h>
@@ -30,6 +31,33 @@ static char  g_dni[32]         = {0};
 static float g_saldo           = 0.0f;
 static int   g_alquiler_activo = 0;  // 0 = sin alquiler en curso
 static int   g_vehiculo_activo = 0;
+
+void net_enviar(const char *msg);
+void net_recibir_linea(char *buf, int tam);
+
+//Sincroniza el saldo del usuario con el servidor.
+static void refrescar_saldo(void) {
+    if (g_id_usuario <= 0) return;
+
+    char comando[64];
+    snprintf(comando, sizeof(comando), CMD_GET_USUARIO " %d\n", g_id_usuario);
+    net_enviar(comando);
+
+    char resp[64];
+    net_recibir_linea(resp, sizeof(resp));
+    if (strcmp(resp, RESP_OK) != 0) return;
+
+    char linea[PROTO_BUFF_SIZE];
+    net_recibir_linea(linea, sizeof(linea));
+
+    int id = 0;
+    char dni[32];
+    char nombre[64];
+    float saldo = 0.0f;
+    if (sscanf(linea, "%d|%31[^|]|%63[^|]|%f", &id, dni, nombre, &saldo) == 4 && id == g_id_usuario) {
+        g_saldo = saldo;
+    }
+}
 
 // Conecta al servidor. Devuelve 0 si ok, -1 si error.
 int net_conectar(const char *ip, int puerto) {
@@ -374,6 +402,7 @@ static void devolver(void) {
         printf("\n  Vehiculo devuelto correctamente.\n");
         g_alquiler_activo = 0;
         g_vehiculo_activo = 0;
+        refrescar_saldo();
     } else {
         printf("\n  Error al devolver el vehiculo. Intentalo de nuevo.\n");
     }
@@ -521,7 +550,8 @@ void menu_principal(void) {
 int main(void) {
     printf("\n  Conectando al servidor...\n");
 
-    if (net_conectar("127.0.0.1", 8080) != 0) {
+    config_cargar("data/config.conf");
+    if (net_conectar(g_config.ip_servidor, g_config.puerto) != 0) {
         printf("  Error: no se pudo conectar al servidor.\n");
         printf("  Asegurate de que KinetiX_Server esta en ejecucion.\n\n");
         return 1;

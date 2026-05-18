@@ -354,7 +354,7 @@ int insertar_usuario(Usuario u, int *id_generado_out) {
     return SQLITE_OK;
 }
 
-int insertar_alquiler(Alquiler a) {
+int insertar_alquiler(Alquiler a, int *id_generado_out) {
     if (!db) return SQLITE_MISUSE;
 
     sqlite3_stmt *stmt = NULL;
@@ -370,7 +370,7 @@ int insertar_alquiler(Alquiler a) {
         return rc;
     }
 
-    sqlite3_bind_int(stmt, 1, a.id_alquiler);
+    sqlite3_bind_null(stmt, 1);
     sqlite3_bind_int(stmt, 2, a.id_usuario);
     sqlite3_bind_int(stmt, 3, a.id_vehiculo);
     sqlite3_bind_int(stmt, 4, a.id_estacion_origen);
@@ -396,6 +396,7 @@ int insertar_alquiler(Alquiler a) {
         printf("[BD] Error INSERT ALQUILER: %s\n", sqlite3_errmsg(db));
         return rc;
     }
+    if (id_generado_out) *id_generado_out = (int)sqlite3_last_insert_rowid(db);
     return SQLITE_OK;
 }
 
@@ -718,8 +719,9 @@ int listar_alquileres(Alquiler **lista_out, int *cantidad_out) {
     sqlite3_stmt *stmt = NULL;
     const char *sql =
         "SELECT id_alquiler, id_usuario, id_vehiculo, "
-        "COALESCE(id_estacion_origen,0), COALESCE(id_estacion_destino,0), "
-        "fecha_inicio, COALESCE(fecha_fin,''), coste_total FROM ALQUILER;";
+        "id_estacion_origen, COALESCE(id_estacion_destino,0), "
+        "fecha_inicio, COALESCE(fecha_fin,''), coste_total "
+        "FROM ALQUILER;";
 
     rc = sqlite3_prepare_v2(db, sql, -1, &stmt, NULL);
     if (rc != SQLITE_OK) {

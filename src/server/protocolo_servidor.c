@@ -400,7 +400,9 @@ static void handle_alquilar(kinetix_socket_t s, const char *args) {
         strftime(a.fecha_inicio, sizeof(a.fecha_inicio), "%Y-%m-%d %H:%M:%S", tm_info);
         strcpy(a.fecha_fin, "");
 
-        if (insertar_alquiler(a) != 0) break;
+        int id_alquiler = 0;
+        if (insertar_alquiler(a, &id_alquiler) != 0) break;
+        a.id_alquiler = id_alquiler;
 
         v.estado = 'R';
         v.id_estacion = 0;
@@ -439,6 +441,7 @@ static void handle_devolver(kinetix_socket_t s, const char *args) {
     int n = 0;
     Alquiler al_copia;
     Vehiculo v;
+    Usuario u;
 
     bd_mutex_lock();
     if (bd_begin_transaccion() != SQLITE_OK) {
@@ -494,13 +497,21 @@ static void handle_devolver(kinetix_socket_t s, const char *args) {
     al_copia.coste_total         = (float)(minutos * tarifa);
     al_copia.id_estacion_destino = id_estacion_destino;
 
-    if (actualizar_alquiler(al_copia) != 0) {
+    if (buscar_usuario(al_copia.id_usuario, &u) != 0) {
         ok = 0;
-    } else if (buscar_vehiculo(al_copia.id_vehiculo, &v) == 0) {
+    } else {
+        u.saldo -= al_copia.coste_total;
+        if (u.saldo < 0.0f) u.saldo = 0.0f;
+        ok = (actualizar_usuario(u) == 0);
+    }
+
+    if (ok && actualizar_alquiler(al_copia) != 0) {
+        ok = 0;
+    } else if (ok && buscar_vehiculo(al_copia.id_vehiculo, &v) == 0) {
         v.estado = 'D';
         v.id_estacion = id_estacion_destino;
         ok = (actualizar_vehiculo(v) == 0);
-    } else {
+    } else if (ok) {
         ok = 0;
     }
 
