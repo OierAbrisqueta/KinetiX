@@ -286,7 +286,6 @@ static void alquilar(void) {
     printf("\n  --- Alquilar vehiculo ---\n");
     printf("  ................................................\n\n");
 
-    // Comprobamos que no tenga ya un alquiler en curso
     if (g_alquiler_activo != 0) {
         printf("  Ya tienes un alquiler en curso (ID: %d).\n", g_alquiler_activo);
         printf("  Devuelve el vehiculo actual antes de alquilar otro.\n");
@@ -294,7 +293,6 @@ static void alquilar(void) {
         return;
     }
 
-    // Comprobamos que tenga saldo
     if (g_saldo <= 0.0f) {
         printf("  Saldo insuficiente (%.2f EUR).\n", g_saldo);
         printf("  Recarga tu saldo para poder alquilar.\n");
@@ -302,18 +300,46 @@ static void alquilar(void) {
         return;
     }
 
-    // Mostramos los vehiculos disponibles para que el usuario elija
-    net_enviar(CMD_LIST_VEHICULOS "\n");
+    // --- PASO 1: Mostrar estaciones ---
+    net_enviar(CMD_LIST_ESTACIONES "\n");
     char buf[32];
     net_recibir_linea(buf, sizeof(buf));
-    int n = atoi(buf);
+    int n_est = atoi(buf);
 
-    printf("  %-6s  %-12s  %-10s  %-10s  %s\n",
-           "ID", "Tipo", "Bateria", "Estacion", "Tarifa/min");
-    printf("  ------  ------------  ----------  ----------  ----------\n");
+    printf("  %-6s  %-26s  %s\n", "ID", "Nombre", "Disponibles");
+    printf("  ------  --------------------------  -----------\n");
+
+    for (int i = 0; i < n_est; i++) {
+        char linea[PROTO_BUFF_SIZE];
+        net_recibir_linea(linea, sizeof(linea));
+
+        int id_e, cap, disp;
+        char nombre[51] = {0}, dir[101] = {0};
+        float cx, cy;
+        sscanf(linea, "%d|%50[^|]|%100[^|]|%f|%f|%d|%d",
+               &id_e, nombre, dir, &cx, &cy, &cap, &disp);
+
+        printf("  %-6d  %-26s  %d/%d\n", id_e, nombre, disp, cap);
+    }
+
+    printf("\n");
+    int id_estacion = ui_leer_int("Selecciona una estacion (ID)", 1, 99999);
+
+    // --- PASO 2: Mostrar vehiculos de esa estacion ---
+    ui_limpiar();
+    printf("\n  --- Vehiculos disponibles en estacion %d ---\n", id_estacion);
+    printf("  ................................................\n\n");
+
+    net_enviar(CMD_LIST_VEHICULOS "\n");
+    char buf2[32];
+    net_recibir_linea(buf2, sizeof(buf2));
+    int n_veh = atoi(buf2);
+
+    printf("  %-6s  %-12s  %-10s  %s\n", "ID", "Tipo", "Bateria", "Tarifa/min");
+    printf("  ------  ------------  ----------  ----------\n");
 
     int disponibles = 0;
-    for (int i = 0; i < n; i++) {
+    for (int i = 0; i < n_veh; i++) {
         char linea[PROTO_BUFF_SIZE];
         net_recibir_linea(linea, sizeof(linea));
 
@@ -322,26 +348,25 @@ static void alquilar(void) {
         float bateria;
         sscanf(linea, "%d|%1s|%f|%d|%1s", &id, tipo, &bateria, &id_est, estado);
 
-        if (estado[0] == 'D' && bateria > 15) {
+        if (id_est == id_estacion && estado[0] == 'D' && bateria > 15) {
             const char *nombre_tipo = (tipo[0] == 'B') ? "Bicicleta" : "Patinete";
             float tarifa = (tipo[0] == 'B') ? 0.05f : 0.07f;
-            printf("  %-6d  %-12s  %-9.1f%%  %-10d  %.2f EUR\n",
-                   id, nombre_tipo, bateria, id_est, tarifa);
+            printf("  %-6d  %-12s  %-9.1f%%  %.2f EUR\n",
+                   id, nombre_tipo, bateria, tarifa);
             disponibles++;
         }
     }
 
     if (disponibles == 0) {
-        printf("  No hay vehiculos disponibles en este momento.\n");
+        printf("\n  No hay vehiculos disponibles en esta estacion.\n");
         ui_pausa();
         return;
     }
 
+    // --- PASO 3: Elegir vehiculo y confirmar ---
     printf("\n");
     int id_vehiculo = ui_leer_int("ID del vehiculo a alquilar", 1, 99999);
-    int id_estacion = ui_leer_int("ID de la estacion de origen", 1, 99999);
 
-    // Enviamos el comando de alquiler al servidor
     char comando[128];
     snprintf(comando, sizeof(comando), CMD_ALQUILAR " %d|%d|%d",
              g_id_usuario, id_vehiculo, id_estacion);
@@ -359,7 +384,7 @@ static void alquilar(void) {
         printf("  Buen viaje!\n");
     } else {
         printf("\n  Error al iniciar el alquiler.\n");
-        printf("  Comprueba que el ID del vehiculo y la estacion sean correctos.\n");
+        printf("  Comprueba que el ID del vehiculo sea correcto.\n");
     }
     ui_pausa();
 }
@@ -378,6 +403,22 @@ static void devolver(void) {
 
     printf("  Alquiler activo  : ID %d\n", g_alquiler_activo);
     printf("  Vehiculo en uso  : ID %d\n\n", g_vehiculo_activo);
+
+    net_enviar(CMD_LIST_ESTACIONES "\n");
+    char buf_est[32];
+    net_recibir_linea(buf_est, sizeof(buf_est));
+    int n_est = atoi(buf_est);
+    printf("  %-6s  %-26s  %s\n", "ID", "Nombre", "Libres");
+    printf("  ------  --------------------------  -------\n");
+    for (int i = 0; i < n_est; i++) {
+        char linea_est[PROTO_BUFF_SIZE];
+        net_recibir_linea(linea_est, sizeof(linea_est));
+        Estacion e = Estacion::fromString(linea_est);
+        printf("  %-6d  %-26s  %d/%d\n",
+               e.id_estacion, e.nombre,
+               e.disponibilidad_actual, e.capacidad_max);
+    }
+    printf("\n");
 
     int id_estacion = ui_leer_int("ID de la estacion de destino", 1, 99999);
 
@@ -465,7 +506,7 @@ static void sincronizar_estado_inicial(void) {
         net_recibir_linea(linea, sizeof(linea));
 
         int id_al, id_u, id_v, est_o, est_d;
-        char f_ini[32], f_fin[32];
+        char f_ini[32] = {0}, f_fin[32] = {0};
         float coste;
         sscanf(linea, "%d|%d|%d|%d|%d|%[^|]|%[^|]|%f",
                &id_al, &id_u, &id_v, &est_o, &est_d, f_ini, f_fin, &coste);
@@ -505,8 +546,8 @@ static void consultar_estado(void) {
         float bateria = 0;
         double minutos = 0, km = 0;
         sscanf(resp + 3, "%f|%lf|%lf", &bateria, &minutos, &km);
-        float coste = (float)(minutos * 0.05f);
-
+        float tarifa = 0.05f;  // bici por defecto, el STAT no devuelve el tipo
+        float coste = (float)(minutos * tarifa);
         printf("  Bateria          : %.1f%%\n", bateria);
         printf("  Duracion         : %.0f min\n", minutos);
         printf("  Km estimados     : %.1f km\n", km);
