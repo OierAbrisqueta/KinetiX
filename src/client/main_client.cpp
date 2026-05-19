@@ -31,6 +31,7 @@ static char  g_dni[32]         = {0};
 static float g_saldo           = 0.0f;
 static int   g_alquiler_activo = 0;  // 0 = sin alquiler en curso
 static int   g_vehiculo_activo = 0;
+static char  g_tipo_vehiculo_activo = '\0';
 
 void net_enviar(const char *msg);
 void net_recibir_linea(char *buf, int tam);
@@ -356,6 +357,7 @@ static void alquilar(void) {
     int ids_veh[512];
     int n_ids_veh = 0;
     int max_id_veh = 1;
+    char tipos_veh[512] = {0};
 
     int disponibles = 0;
     for (int i = 0; i < n_veh; i++) {
@@ -373,7 +375,11 @@ static void alquilar(void) {
             printf("  %-6d  %-12s  %-9.1f%%  %.2f EUR\n",
                    id, nombre_tipo, bateria, tarifa);
 
-            if (n_ids_veh < 512) ids_veh[n_ids_veh++] = id;
+            if (n_ids_veh < 512) {
+                ids_veh[n_ids_veh] = id;
+                tipos_veh[n_ids_veh] = tipo[0];
+                n_ids_veh++;
+            }
             if (id > max_id_veh) max_id_veh = id;
             disponibles++;
         }
@@ -389,10 +395,15 @@ static void alquilar(void) {
     printf("\n");
 
     int id_vehiculo = -1;
+    char tipo_seleccionado = '\0';
     while (id_vehiculo == -1) {
         int elegido = ui_leer_int("ID del vehiculo a alquilar", 1, max_id_veh);
         for (int i = 0; i < n_ids_veh; i++) {
-            if (ids_veh[i] == elegido) { id_vehiculo = elegido; break; }
+            if (ids_veh[i] == elegido) {
+                id_vehiculo = elegido;
+                tipo_seleccionado = tipos_veh[i];
+                break;
+            }
         }
         if (id_vehiculo == -1)
             printf("  Error: ese ID no corresponde a ningun vehiculo disponible en esta estacion.\n");
@@ -410,6 +421,7 @@ static void alquilar(void) {
         sscanf(resp, "OK %d", &id_alquiler);
         g_alquiler_activo = id_alquiler;
         g_vehiculo_activo = id_vehiculo;
+        g_tipo_vehiculo_activo = tipo_seleccionado;
         printf("\n  Alquiler iniciado correctamente.\n");
         printf("  ID de alquiler: %d\n", id_alquiler);
         printf("  Buen viaje!\n");
@@ -474,6 +486,7 @@ static void devolver(void) {
         printf("\n  Vehiculo devuelto correctamente.\n");
         g_alquiler_activo = 0;
         g_vehiculo_activo = 0;
+        g_tipo_vehiculo_activo = '\0';
         refrescar_saldo();
     } else {
         printf("\n  Error al devolver el vehiculo. Intentalo de nuevo.\n");
@@ -577,7 +590,7 @@ static void consultar_estado(void) {
         float bateria = 0;
         double minutos = 0, km = 0;
         sscanf(resp + 3, "%f|%lf|%lf", &bateria, &minutos, &km);
-        float tarifa = 0.05f;  // bici por defecto, el STAT no devuelve el tipo
+        float tarifa = (g_tipo_vehiculo_activo == 'P') ? 0.07f : 0.05f;
         float coste = (float)(minutos * tarifa);
         printf("  Bateria          : %.1f%%\n", bateria);
         printf("  Duracion         : %.0f min\n", minutos);
