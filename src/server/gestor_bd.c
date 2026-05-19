@@ -681,7 +681,7 @@ int listar_usuarios(Usuario **lista_out, int *cantidad_out) {
     if (!arr) return SQLITE_NOMEM;
 
     sqlite3_stmt *stmt = NULL;
-    const char *sql = "SELECT id_usuario, dni, nombre, saldo FROM USUARIO;";
+    const char *sql = "SELECT id_usuario, dni, nombre, saldo, contrasena FROM USUARIO;";
 
     rc = sqlite3_prepare_v2(db, sql, -1, &stmt, NULL);
     if (rc != SQLITE_OK) {
@@ -696,7 +696,7 @@ int listar_usuarios(Usuario **lista_out, int *cantidad_out) {
         strncpy(arr[i].dni,    (const char*)sqlite3_column_text(stmt, 1), 9);
         strncpy(arr[i].nombre, (const char*)sqlite3_column_text(stmt, 2), 50);
         arr[i].saldo = (float)sqlite3_column_double(stmt, 3);
-        arr[i].contrasena[0] = '\0';
+        strncpy(arr[i].contrasena, (const char*)sqlite3_column_text(stmt, 4), sizeof(arr[i].contrasena) - 1);
         i++;
     }
     sqlite3_finalize(stmt);

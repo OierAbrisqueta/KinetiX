@@ -24,7 +24,7 @@ typedef struct {
     char dni[10];
     char nombre[51];
     float saldo;
-    char contrasena[51];
+    char contrasena[65];
 } Usuario;
 
 typedef struct {
