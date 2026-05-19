@@ -325,14 +325,14 @@ static void alquilar(void) {
 
         printf("  %-6d  %-26s  %d/%d\n", id_e, nombre, disp, cap);
 
-        if (n_ids_est < 512) ids_est[n_ids_est++] = id_e;  // NUEVO
-        if (id_e > max_id_est) max_id_est = id_e;           // NUEVO
-    }                                                        // cierre del for
+        if (n_ids_est < 512) ids_est[n_ids_est++] = id_e;
+        if (id_e > max_id_est) max_id_est = id_e;
+    }
 
     int id_estacion = -1;
     while (id_estacion == -1) {
         printf("\n");
-        int elegido = ui_leer_int("Selecciona una estacion (ID)", 1, max_id_est); // NUEVO rango
+        int elegido = ui_leer_int("Selecciona una estacion (ID)", 1, max_id_est);
         for (int i = 0; i < n_ids_est; i++) {
             if (ids_est[i] == elegido) { id_estacion = elegido; break; }
         }
@@ -373,8 +373,8 @@ static void alquilar(void) {
             printf("  %-6d  %-12s  %-9.1f%%  %.2f EUR\n",
                    id, nombre_tipo, bateria, tarifa);
 
-            if (n_ids_veh < 512) ids_veh[n_ids_veh++] = id;  // NUEVO
-            if (id > max_id_veh) max_id_veh = id;             // NUEVO
+            if (n_ids_veh < 512) ids_veh[n_ids_veh++] = id;
+            if (id > max_id_veh) max_id_veh = id;
             disponibles++;
         }
     }
