@@ -30,7 +30,8 @@ INSERT INTO USUARIO (id_usuario, dni, nombre, contrasena, saldo) VALUES
                                                                      (2, '87654321B', 'Carlos Martínez Ruiz',  '$2b$12$9mPqL2wT8xN7vR4sJ6KdOuZcF0Hn3M5', 120.50),
                                                                      (3, '11223344C', 'Laura Sánchez Pérez',   '$2b$12$3nQrM5yU9zP8wS2tK7LePvYdG1Ij4N6', 0.00),
                                                                      (4, '44332211D', 'Miguel Torres Díaz',    '$2b$12$7pRsN8aV0bQ9xT3uL4MfOwZeH2Jk5O7', 200.75),
-                                                                     (5, '55667788E', 'Elena Romero Castro',   '$2b$12$1qStO9bW1cR0yU4vM5NgPxAeI3Kl6P8', 35.20);
+                                                                     (5, '55667788E', 'Elena Romero Castro',   '$2b$12$1qStO9bW1cR0yU4vM5NgPxAeI3Kl6P8', 35.20),
+                                                                     (6, '12345678Z', 'Test Usuario', '03ac674216f3e15c761ee1a5e255f067953623c8b388b4459e13f978d7c846f4', 100.00);
 
 -- =============================================
 -- VEHÍCULOS

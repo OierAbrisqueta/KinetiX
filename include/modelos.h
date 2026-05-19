@@ -33,8 +33,8 @@ typedef struct {
     int id_vehiculo;
     int id_estacion_origen;
     int id_estacion_destino;
-    char fecha_inicio[20];
-    char fecha_fin[20];
+    char fecha_inicio[21];
+    char fecha_fin[21];
     float coste_total;
 } Alquiler;
 

@@ -468,7 +468,7 @@ int actualizar_usuario(Usuario u) {
     sqlite3_stmt *stmt = NULL;
     const char *sql =
         "UPDATE USUARIO "
-        "SET dni=?, nombre=?, contrasena=?, saldo=? "
+        "SET dni=?, nombre=?, saldo=? "
         "WHERE id_usuario=?;";
 
     int rc = sqlite3_prepare_v2(db, sql, -1, &stmt, NULL);
