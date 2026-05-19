@@ -16,6 +16,9 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <vector>
+#include <map>
+#include <memory>
 
 #ifdef _WIN32
 static SOCKET g_sock = INVALID_SOCKET;
@@ -25,16 +28,65 @@ static const SocketHandle INVALID_SOCKET = -1;
 static SocketHandle g_sock = INVALID_SOCKET;
 #endif
 
-static int   g_id_usuario      = 0;
-static char  g_nombre[64]      = {0};
-static char  g_dni[32]         = {0};
-static float g_saldo           = 0.0f;
-static int   g_alquiler_activo = 0;  // 0 = sin alquiler en curso
-static int   g_vehiculo_activo = 0;
-static char  g_tipo_vehiculo_activo = '\0';
+static int g_id_usuario = 0;
+static char g_nombre[64] = {0};
+static char g_dni[32] = {0};
+static float g_saldo = 0.0f;
+static int g_alquiler_activo = 0;  // 0 = sin alquiler en curso
+static int g_vehiculo_activo = 0;
+static char g_tipo_vehiculo_activo = '\0';
+
+//Caché Local
+static std::vector<Estacion> g_cache_estaciones;
+static std::map<int, std::unique_ptr<Vehiculo>> g_cache_vehiculos;
+static bool g_cache_valida = false;
 
 void net_enviar(const char *msg);
 void net_recibir_linea(char *buf, int tam);
+
+//Descarga estaciones y vehiculos del servidor y llena el cache
+static void cache_cargar(void) {
+    g_cache_estaciones.clear();
+    g_cache_vehiculos.clear();
+
+    // Estaciones
+    net_enviar(CMD_LIST_ESTACIONES "\n");
+    char buf[32];
+    net_recibir_linea(buf, sizeof(buf));
+    int n_est = atoi(buf);
+
+    for (int i = 0; i < n_est; i++) {
+        char linea[PROTO_BUFF_SIZE];
+        net_recibir_linea(linea, sizeof(linea));
+        g_cache_estaciones.push_back(Estacion::fromString(linea));
+    }
+
+    // Vehiculos
+    net_enviar(CMD_LIST_VEHICULOS "\n");
+    net_recibir_linea(buf, sizeof(buf));
+    int n_veh = atoi(buf);
+
+    for (int i = 0; i < n_veh; i++) {
+        char linea[PROTO_BUFF_SIZE];
+        net_recibir_linea(linea, sizeof(linea));
+        auto v = Vehiculo::fromString(linea);
+        if (v) {
+            int id = v->id_vehiculo;
+            g_cache_vehiculos[id] = std::move(v);
+        }
+    }
+
+    g_cache_valida = true;
+}
+
+// Invalida el cache
+static void cache_invalidar(void) {
+    g_cache_valida = false;
+}
+
+static void cache_asegurar(void) {
+    if (!g_cache_valida) cache_cargar();
+}
 
 //Sincroniza el saldo del usuario con el servidor.
 static void refrescar_saldo(void) {
@@ -75,7 +127,7 @@ int net_conectar(const char *ip, int puerto) {
     struct sockaddr_in srv;
     memset(&srv, 0, sizeof(srv));
     srv.sin_family = AF_INET;
-    srv.sin_port   = htons(puerto);
+    srv.sin_port = htons(puerto);
     inet_pton(AF_INET, ip, &srv.sin_addr);
 
     if (connect(g_sock, (struct sockaddr *)&srv, sizeof(srv)) != 0) {
@@ -201,14 +253,9 @@ static void ver_estaciones(void) {
     printf("\n  --- Listado de estaciones ---\n");
     printf("  ................................................\n\n");
 
-    // Pedimos la lista al servidor
-    net_enviar(CMD_LIST_ESTACIONES "\n");
+    cache_asegurar();
 
-    char buf[32];
-    net_recibir_linea(buf, sizeof(buf));
-    int n = atoi(buf);
-
-    if (n == 0) {
+    if (g_cache_estaciones.empty()) {
         printf("  No hay estaciones registradas.\n");
         ui_pausa();
         return;
@@ -217,13 +264,10 @@ static void ver_estaciones(void) {
     printf("  %-6s  %-25s  %-10s  %s\n", "ID", "Nombre", "Libres", "Ocupacion");
     printf("  ------  -------------------------  ----------  ---------\n");
 
-    for (int i = 0; i < n; i++) {
-        char linea[PROTO_BUFF_SIZE];
-        net_recibir_linea(linea, sizeof(linea));
-
-        Estacion e = Estacion::fromString(linea);
-
+    for (int i = 0; i < (int)g_cache_estaciones.size(); i++) {
+        const Estacion &e = g_cache_estaciones[i];
         char libres[16];
+
         snprintf(libres, sizeof(libres), "%d/%d",
                  e.disponibilidad_actual, e.capacidad_max);
 
@@ -232,7 +276,7 @@ static void ver_estaciones(void) {
     }
 
     printf("  ................................................\n");
-    printf("  Total: %d estaciones.\n", n);
+    printf("  Total: %d estaciones.\n", (int)g_cache_estaciones.size());
     ui_pausa();
 }
 
@@ -242,33 +286,28 @@ static void ver_vehiculos_disponibles(void) {
     printf("\n  --- Vehiculos disponibles ---\n");
     printf("  ................................................\n\n");
 
-    net_enviar(CMD_LIST_VEHICULOS "\n");
+    cache_asegurar();
 
-    char buf[32];
-    net_recibir_linea(buf, sizeof(buf));
-    int n = atoi(buf);
+    if (g_cache_vehiculos.empty()) {
+        printf("  No hay vehículos registrados.\n");
+        ui_pausa();
+        return;
+    }
 
     printf("  %-6s  %-12s  %-10s  %-10s  %s\n",
            "ID", "Tipo", "Bateria", "Estacion", "Tarifa/min");
     printf("  ------  ------------  ----------  ----------  ----------\n");
 
     int mostrados = 0;
-    for (int i = 0; i < n; i++) {
-        char linea[PROTO_BUFF_SIZE];
-        net_recibir_linea(linea, sizeof(linea));
 
-        // Parsear: id|tipo|bateria|id_estacion|estado
-        int id, id_est;
-        char tipo[2] = {0}, estado[2] = {0};
-        float bateria;
-        sscanf(linea, "%d|%1s|%f|%d|%1s", &id, tipo, &bateria, &id_est, estado);
-
-        // Solo mostramos los disponibles y con bateria suficiente
-        if (estado[0] == 'D' && bateria > 15) {
-            const char *nombre_tipo = (tipo[0] == 'B') ? "Bicicleta" : "Patinete";
-            float tarifa = (tipo[0] == 'B') ? 0.05f : 0.07f;
+    for (const auto &par : g_cache_vehiculos) {
+        const auto &v = par.second;
+        if (v->estaDisponible()) {
+            char tipo_nombre[16];
+            v->getTipoNombre(tipo_nombre, sizeof(tipo_nombre));
             printf("  %-6d  %-12s  %-9.1f%%  %-10d  %.2f EUR\n",
-                   id, nombre_tipo, bateria, id_est, tarifa);
+                   v->id_vehiculo, tipo_nombre, v->bateria,
+                   v->id_estacion, v->getTarifaMinuto());
             mostrados++;
         }
     }
@@ -301,86 +340,63 @@ static void alquilar(void) {
         return;
     }
 
-    // --- PASO 1: Mostrar estaciones ---
-    net_enviar(CMD_LIST_ESTACIONES "\n");
-    char buf[32];
-    net_recibir_linea(buf, sizeof(buf));
-    int n_est = atoi(buf);
+    cache_asegurar();
+
+    if (g_cache_estaciones.empty()) {
+        printf("  No hay estaciones disponibles.\n");
+        ui_pausa();
+        return;
+    }
 
     printf("  %-6s  %-26s  %s\n", "ID", "Nombre", "Disponibles");
     printf("  ------  --------------------------  -----------\n");
 
-    int ids_est[512];
-    int n_ids_est = 0;
     int max_id_est = 1;
 
-    for (int i = 0; i < n_est; i++) {
-        char linea[PROTO_BUFF_SIZE];
-        net_recibir_linea(linea, sizeof(linea));
+    for (int i = 0; i < (int)g_cache_estaciones.size(); i++) {
+        const Estacion &e = g_cache_estaciones[i];
 
-        int id_e, cap, disp;
-        char nombre[51] = {0}, dir[101] = {0};
-        float cx, cy;
-        sscanf(linea, "%d|%50[^|]|%100[^|]|%f|%f|%d|%d",
-               &id_e, nombre, dir, &cx, &cy, &cap, &disp);
+        printf("  %-6d  %-26s  %d/%d\n",
+               e.id_estacion, e.nombre,
+               e.disponibilidad_actual, e.capacidad_max);
 
-        printf("  %-6d  %-26s  %d/%d\n", id_e, nombre, disp, cap);
-
-        if (n_ids_est < 512) ids_est[n_ids_est++] = id_e;
-        if (id_e > max_id_est) max_id_est = id_e;
+        if (e.id_estacion > max_id_est) max_id_est = e.id_estacion;
     }
 
     int id_estacion = -1;
     while (id_estacion == -1) {
         printf("\n");
         int elegido = ui_leer_int("Selecciona una estacion (ID)", 1, max_id_est);
-        for (int i = 0; i < n_ids_est; i++) {
-            if (ids_est[i] == elegido) { id_estacion = elegido; break; }
+        for (int i = 0; i < g_cache_estaciones.size(); i++) {
+            Estacion &e = g_cache_estaciones[i];
+            if (e.id_estacion == elegido) {
+                id_estacion = elegido;
+                break;
+            }
         }
         if (id_estacion == -1)
             printf("  Error: ese ID no corresponde a ninguna estacion de la lista.\n");
     }
 
-    // --- PASO 2: Mostrar vehiculos de esa estacion ---
+    //Paso 2: Mostrar vehiculos de esa estacion
     ui_limpiar();
     printf("\n  --- Vehiculos disponibles en estacion %d ---\n", id_estacion);
     printf("  ................................................\n\n");
 
-    net_enviar(CMD_LIST_VEHICULOS "\n");
-    char buf2[32];
-    net_recibir_linea(buf2, sizeof(buf2));
-    int n_veh = atoi(buf2);
-
     printf("  %-6s  %-12s  %-10s  %s\n", "ID", "Tipo", "Bateria", "Tarifa/min");
     printf("  ------  ------------  ----------  ----------\n");
 
-    int ids_veh[512];
-    int n_ids_veh = 0;
     int max_id_veh = 1;
-    char tipos_veh[512] = {0};
-
     int disponibles = 0;
-    for (int i = 0; i < n_veh; i++) {
-        char linea[PROTO_BUFF_SIZE];
-        net_recibir_linea(linea, sizeof(linea));
-
-        int id, id_est;
-        char tipo[2] = {0}, estado[2] = {0};
-        float bateria;
-        sscanf(linea, "%d|%1s|%f|%d|%1s", &id, tipo, &bateria, &id_est, estado);
-
-        if (id_est == id_estacion && estado[0] == 'D' && bateria > 15) {
-            const char *nombre_tipo = (tipo[0] == 'B') ? "Bicicleta" : "Patinete";
-            float tarifa = (tipo[0] == 'B') ? 0.05f : 0.07f;
+    for (const auto &par : g_cache_vehiculos) {
+        const auto &v = par.second;
+        if (v->id_estacion == id_estacion && v->estaDisponible()) {
+            char tipo_nombre[16];
+            v->getTipoNombre(tipo_nombre, sizeof(tipo_nombre));
             printf("  %-6d  %-12s  %-9.1f%%  %.2f EUR\n",
-                   id, nombre_tipo, bateria, tarifa);
-
-            if (n_ids_veh < 512) {
-                ids_veh[n_ids_veh] = id;
-                tipos_veh[n_ids_veh] = tipo[0];
-                n_ids_veh++;
-            }
-            if (id > max_id_veh) max_id_veh = id;
+                   v->id_vehiculo, tipo_nombre,
+                   v->bateria, v->getTarifaMinuto());
+            if (v->id_vehiculo > max_id_veh) max_id_veh = v->id_vehiculo;
             disponibles++;
         }
     }
@@ -391,22 +407,20 @@ static void alquilar(void) {
 
     }
 
-    // --- PASO 3: Elegir vehiculo y confirmar ---
+    //Paso 3: Elegir vehiculo y confirmar
     printf("\n");
 
     int id_vehiculo = -1;
-    char tipo_seleccionado = '\0';
     while (id_vehiculo == -1) {
         int elegido = ui_leer_int("ID del vehiculo a alquilar", 1, max_id_veh);
-        for (int i = 0; i < n_ids_veh; i++) {
-            if (ids_veh[i] == elegido) {
-                id_vehiculo = elegido;
-                tipo_seleccionado = tipos_veh[i];
-                break;
+        auto it = g_cache_vehiculos.find(elegido);
+        if (it != g_cache_vehiculos.end()
+            && it->second->id_estacion == id_estacion
+            && it->second->estaDisponible()) {
+            id_vehiculo = elegido;
+            } else {
+                printf("  Error: ese ID no corresponde a ningun vehiculo disponible en esta estacion.\n");
             }
-        }
-        if (id_vehiculo == -1)
-            printf("  Error: ese ID no corresponde a ningun vehiculo disponible en esta estacion.\n");
     }
 
     char comando[128];
@@ -421,7 +435,10 @@ static void alquilar(void) {
         sscanf(resp, "OK %d", &id_alquiler);
         g_alquiler_activo = id_alquiler;
         g_vehiculo_activo = id_vehiculo;
-        g_tipo_vehiculo_activo = tipo_seleccionado;
+        g_tipo_vehiculo_activo = g_cache_vehiculos[id_vehiculo]->tipo;
+
+        cache_invalidar();
+
         printf("\n  Alquiler iniciado correctamente.\n");
         printf("  ID de alquiler: %d\n", id_alquiler);
         printf("  Buen viaje!\n");
@@ -447,16 +464,12 @@ static void devolver(void) {
     printf("  Alquiler activo  : ID %d\n", g_alquiler_activo);
     printf("  Vehiculo en uso  : ID %d\n\n", g_vehiculo_activo);
 
-    net_enviar(CMD_LIST_ESTACIONES "\n");
-    char buf_est[32];
-    net_recibir_linea(buf_est, sizeof(buf_est));
-    int n_est = atoi(buf_est);
+    cache_asegurar();
+
     printf("  %-6s  %-26s  %s\n", "ID", "Nombre", "Libres");
     printf("  ------  --------------------------  -------\n");
-    for (int i = 0; i < n_est; i++) {
-        char linea_est[PROTO_BUFF_SIZE];
-        net_recibir_linea(linea_est, sizeof(linea_est));
-        Estacion e = Estacion::fromString(linea_est);
+    for (int i = 0; i < g_cache_estaciones.size(); i++) {
+        Estacion &e = g_cache_estaciones[i];
         printf("  %-6d  %-26s  %d/%d\n",
                e.id_estacion, e.nombre,
                e.disponibilidad_actual, e.capacidad_max);
@@ -487,6 +500,8 @@ static void devolver(void) {
         g_alquiler_activo = 0;
         g_vehiculo_activo = 0;
         g_tipo_vehiculo_activo = '\0';
+
+        cache_invalidar();
         refrescar_saldo();
     } else {
         printf("\n  Error al devolver el vehiculo. Intentalo de nuevo.\n");
@@ -633,7 +648,7 @@ int menu_autenticar(void) {
                 if (sscanf(linea, "%d|%31[^|]|%63[^|]|%f", &id, udni, unombre, &saldo) == 4) {
                     if (strcmp(udni, dni) == 0) {
                         g_id_usuario = id;
-                        strncpy(g_dni,    udni,    sizeof(g_dni)    - 1);
+                        strncpy(g_dni, udni, sizeof(g_dni) - 1);
                         strncpy(g_nombre, unombre, sizeof(g_nombre) - 1);
                         g_saldo = saldo;
                     }
@@ -679,12 +694,12 @@ void menu_principal(void) {
         opcion = ui_leer_int("Seleccione opcion", 0, 6);
 
         switch (opcion) {
-            case 1: ver_estaciones();          break;
+            case 1: ver_estaciones(); break;
             case 2: ver_vehiculos_disponibles(); break;
-            case 3: alquilar();                break;
-            case 4: devolver();                break;
-            case 5: mis_alquileres();          break;
-            case 6: consultar_estado();          break;
+            case 3: alquilar(); break;
+            case 4: devolver(); break;
+            case 5: mis_alquileres(); break;
+            case 6: consultar_estado(); break;
             case 0:
                 printf("\n  ................................................\n");
                 printf("  Hasta pronto, %s!\n\n", g_nombre);
