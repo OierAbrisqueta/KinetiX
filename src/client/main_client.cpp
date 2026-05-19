@@ -309,6 +309,10 @@ static void alquilar(void) {
     printf("  %-6s  %-26s  %s\n", "ID", "Nombre", "Disponibles");
     printf("  ------  --------------------------  -----------\n");
 
+    int ids_est[512];
+    int n_ids_est = 0;
+    int max_id_est = 1;
+
     for (int i = 0; i < n_est; i++) {
         char linea[PROTO_BUFF_SIZE];
         net_recibir_linea(linea, sizeof(linea));
@@ -320,10 +324,21 @@ static void alquilar(void) {
                &id_e, nombre, dir, &cx, &cy, &cap, &disp);
 
         printf("  %-6d  %-26s  %d/%d\n", id_e, nombre, disp, cap);
-    }
 
-    printf("\n");
-    int id_estacion = ui_leer_int("Selecciona una estacion (ID)", 1, 99999);
+        if (n_ids_est < 512) ids_est[n_ids_est++] = id_e;  // NUEVO
+        if (id_e > max_id_est) max_id_est = id_e;           // NUEVO
+    }                                                        // cierre del for
+
+    int id_estacion = -1;
+    while (id_estacion == -1) {
+        printf("\n");
+        int elegido = ui_leer_int("Selecciona una estacion (ID)", 1, max_id_est); // NUEVO rango
+        for (int i = 0; i < n_ids_est; i++) {
+            if (ids_est[i] == elegido) { id_estacion = elegido; break; }
+        }
+        if (id_estacion == -1)
+            printf("  Error: ese ID no corresponde a ninguna estacion de la lista.\n");
+    }
 
     // --- PASO 2: Mostrar vehiculos de esa estacion ---
     ui_limpiar();
@@ -337,6 +352,10 @@ static void alquilar(void) {
 
     printf("  %-6s  %-12s  %-10s  %s\n", "ID", "Tipo", "Bateria", "Tarifa/min");
     printf("  ------  ------------  ----------  ----------\n");
+
+    int ids_veh[512];
+    int n_ids_veh = 0;
+    int max_id_veh = 1;
 
     int disponibles = 0;
     for (int i = 0; i < n_veh; i++) {
@@ -353,6 +372,9 @@ static void alquilar(void) {
             float tarifa = (tipo[0] == 'B') ? 0.05f : 0.07f;
             printf("  %-6d  %-12s  %-9.1f%%  %.2f EUR\n",
                    id, nombre_tipo, bateria, tarifa);
+
+            if (n_ids_veh < 512) ids_veh[n_ids_veh++] = id;  // NUEVO
+            if (id > max_id_veh) max_id_veh = id;             // NUEVO
             disponibles++;
         }
     }
@@ -360,12 +382,21 @@ static void alquilar(void) {
     if (disponibles == 0) {
         printf("\n  No hay vehiculos disponibles en esta estacion.\n");
         ui_pausa();
-        return;
+
     }
 
     // --- PASO 3: Elegir vehiculo y confirmar ---
     printf("\n");
-    int id_vehiculo = ui_leer_int("ID del vehiculo a alquilar", 1, 99999);
+
+    int id_vehiculo = -1;
+    while (id_vehiculo == -1) {
+        int elegido = ui_leer_int("ID del vehiculo a alquilar", 1, max_id_veh);
+        for (int i = 0; i < n_ids_veh; i++) {
+            if (ids_veh[i] == elegido) { id_vehiculo = elegido; break; }
+        }
+        if (id_vehiculo == -1)
+            printf("  Error: ese ID no corresponde a ningun vehiculo disponible en esta estacion.\n");
+    }
 
     char comando[128];
     snprintf(comando, sizeof(comando), CMD_ALQUILAR " %d|%d|%d",
