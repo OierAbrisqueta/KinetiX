@@ -830,7 +830,13 @@ static void usuario_alta(void) {
 
     u.saldo = saldo;
 
+    // Hashear contraseña antes de guardar
+    char hash[HASH_SHA256_HEX_LEN];
+    sha256_hex(u.contrasena, hash);
+    strncpy(u.contrasena, hash, sizeof(u.contrasena) - 1);
+
     int res = insertar_usuario(u, &id_generado);
+
     if (res == 0) {
         char msg[128];
         snprintf(msg, sizeof(msg), "Alta usuario ID=%d dni='%s'",
@@ -888,6 +894,10 @@ static void usuario_modificar(void) {
     }
 
     u.saldo = saldo;
+
+    char hash[HASH_SHA256_HEX_LEN];
+    sha256_hex(u.contrasena, hash);
+    strncpy(u.contrasena, hash, sizeof(u.contrasena) - 1);
 
     int res = actualizar_usuario(u);
     if (res == 0) {

@@ -476,9 +476,8 @@ int actualizar_usuario(Usuario u) {
 
     sqlite3_bind_text  (stmt, 1, u.dni,       -1, SQLITE_TRANSIENT);
     sqlite3_bind_text  (stmt, 2, u.nombre,    -1, SQLITE_TRANSIENT);
-    sqlite3_bind_text  (stmt, 3, u.contrasena,-1, SQLITE_TRANSIENT);
-    sqlite3_bind_double(stmt, 4, (double)u.saldo);
-    sqlite3_bind_int   (stmt, 5, u.id_usuario);
+    sqlite3_bind_double(stmt, 3, (double)u.saldo);
+    sqlite3_bind_int   (stmt, 4, u.id_usuario);
 
     rc = sqlite3_step(stmt);
     sqlite3_finalize(stmt);

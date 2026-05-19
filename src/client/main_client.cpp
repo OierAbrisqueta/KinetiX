@@ -453,6 +453,67 @@ static void mis_alquileres(void) {
     ui_pausa();
 }
 
+// Comprueba al arrancar si el usuario ya tiene un alquiler activo
+static void sincronizar_estado_inicial(void) {
+    net_enviar(CMD_LIST_ALQUILERES "\n");
+    char buf[32];
+    net_recibir_linea(buf, sizeof(buf));
+    int n = atoi(buf);
+
+    for (int i = 0; i < n; i++) {
+        char linea[PROTO_BUFF_SIZE];
+        net_recibir_linea(linea, sizeof(linea));
+
+        int id_al, id_u, id_v, est_o, est_d;
+        char f_ini[32], f_fin[32];
+        float coste;
+        sscanf(linea, "%d|%d|%d|%d|%d|%[^|]|%[^|]|%f",
+               &id_al, &id_u, &id_v, &est_o, &est_d, f_ini, f_fin, &coste);
+
+        if (id_u == g_id_usuario &&
+            (strlen(f_fin) == 0 || strcmp(f_fin, "-") == 0)) {
+            g_alquiler_activo = id_al;
+            g_vehiculo_activo = id_v;
+            }
+    }
+}
+
+// Muestra saldo actualizado y estado del vehiculo activo
+static void consultar_estado(void) {
+    ui_limpiar();
+    printf("\n  --- Estado de tu cuenta ---\n");
+    printf("  ................................................\n\n");
+
+    refrescar_saldo();
+    printf("  Saldo actual     : %.2f EUR\n", g_saldo);
+
+    if (g_alquiler_activo == 0) {
+        printf("  Alquiler activo  : Ninguno\n");
+        ui_pausa();
+        return;
+    }
+
+    printf("  Alquiler activo  : ID %d\n", g_alquiler_activo);
+    printf("  Vehiculo en uso  : ID %d\n\n", g_vehiculo_activo);
+
+    char cmd[64], resp[256];
+    snprintf(cmd, sizeof(cmd), CMD_STAT " %d\n", g_vehiculo_activo);
+    net_enviar(cmd);
+    net_recibir_linea(resp, sizeof(resp));
+
+    if (strncmp(resp, RESP_OK, 2) == 0) {
+        float bateria = 0;
+        double minutos = 0, km = 0;
+        sscanf(resp + 3, "%f|%lf|%lf", &bateria, &minutos, &km);
+        float coste = (float)(minutos * 0.05f);
+
+        printf("  Bateria          : %.1f%%\n", bateria);
+        printf("  Duracion         : %.0f min\n", minutos);
+        printf("  Km estimados     : %.1f km\n", km);
+        printf("  Coste acumulado  : %.2f EUR\n", coste);
+    }
+    ui_pausa();
+}
 
 int menu_autenticar(void) {
     char dni[32], clave[64];
@@ -496,6 +557,7 @@ int menu_autenticar(void) {
 
             printf("\n  Bienvenido, %s.\n", g_nombre);
             ui_pausa();
+            sincronizar_estado_inicial();
             return 1;
         }
 
@@ -511,6 +573,7 @@ int menu_autenticar(void) {
 void menu_principal(void) {
     int opcion;
     do {
+        refrescar_saldo();
         ui_limpiar();
         menu_banner();
         printf("  Bienvenido, %s  |  Saldo: %.2f EUR\n", g_nombre, g_saldo);
@@ -523,11 +586,12 @@ void menu_principal(void) {
         printf("    [ 3 ]  Alquilar vehiculo\n");
         printf("    [ 4 ]  Devolver vehiculo\n");
         printf("    [ 5 ]  Mis alquileres\n");
+        printf("    [ 6 ]  Consultar saldo y estado\n");
         printf("  ................................................\n");
         printf("    [ 0 ]  Cerrar sesion\n");
         printf("\n");
 
-        opcion = ui_leer_int("Seleccione opcion", 0, 5);
+        opcion = ui_leer_int("Seleccione opcion", 0, 6);
 
         switch (opcion) {
             case 1: ver_estaciones();          break;
@@ -535,6 +599,7 @@ void menu_principal(void) {
             case 3: alquilar();                break;
             case 4: devolver();                break;
             case 5: mis_alquileres();          break;
+            case 6: consultar_estado();          break;
             case 0:
                 printf("\n  ................................................\n");
                 printf("  Hasta pronto, %s!\n\n", g_nombre);
