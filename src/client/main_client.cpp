@@ -532,14 +532,12 @@ static void mis_alquileres(void) {
         char linea[PROTO_BUFF_SIZE];
         net_recibir_linea(linea, sizeof(linea));
 
-        // Parsear: id|id_u|id_v|est_orig|est_dest|f_ini|f_fin|coste
         int id_al, id_u, id_v, est_o, est_d;
-        char f_ini[32], f_fin[32];
-        float coste;
+        char f_ini[32] = {0}, f_fin[32] = {0};
+        float coste = 0.0f;
         sscanf(linea, "%d|%d|%d|%d|%d|%[^|]|%[^|]|%f",
                &id_al, &id_u, &id_v, &est_o, &est_d, f_ini, f_fin, &coste);
 
-        // Filtramos solo los del usuario actual
         if (id_u == g_id_usuario) {
             const char *fin = (strlen(f_fin) == 0 || strcmp(f_fin, "-") == 0)
                               ? "En curso" : f_fin;
@@ -576,6 +574,23 @@ static void sincronizar_estado_inicial(void) {
             (strlen(f_fin) == 0 || strcmp(f_fin, "-") == 0)) {
             g_alquiler_activo = id_al;
             g_vehiculo_activo = id_v;
+
+            // Recuperar tipo del vehiculo desde el servidor
+            char cmd[64], resp[PROTO_BUFF_SIZE];
+            snprintf(cmd, sizeof(cmd), CMD_GET_VEHICULO " %d\n", id_v);
+            net_enviar(cmd);
+            net_recibir_linea(resp, sizeof(resp));          // "OK" o "NOT_FOUND"
+            if (strcmp(resp, RESP_OK) == 0) {
+                char vdata[PROTO_BUFF_SIZE];
+                net_recibir_linea(vdata, sizeof(vdata));    // "id|tipo|bat|est|estado"
+                char tipo_s[2] = {0};
+                int vid, vest, vbat_dummy;
+                char vestado_s[2] = {0};
+                sscanf(vdata, "%d|%1[BP]|%*f|%d|%1[DRMB]",
+                       &vid, tipo_s, &vest, vestado_s);
+                if (tipo_s[0] != '\0')
+                    g_tipo_vehiculo_activo = tipo_s[0];
+            }
             }
     }
 }
