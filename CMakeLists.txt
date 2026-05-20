@@ -25,6 +25,7 @@ add_executable(KinetiX_Admin
 target_include_directories(KinetiX_Admin PRIVATE include)
 if (WIN32)
     target_link_libraries(KinetiX_Admin PRIVATE ws2_32)
+    target_link_options(KinetiX_Admin PRIVATE -static-libgcc -static-libstdc++ -static)
 endif()
 
 # Ejecutable 2: servidor remoto (Fase 2)
@@ -35,10 +36,10 @@ add_executable(KinetiX_Server
         ${SOURCES_COMUNES}
         include/informes.h
 )
-
 target_include_directories(KinetiX_Server PRIVATE include)
 if (WIN32)
     target_link_libraries(KinetiX_Server PRIVATE ws2_32)
+    target_link_options(KinetiX_Server PRIVATE -static-libgcc -static-libstdc++ -static)
 else()
     find_package(Threads REQUIRED)
     target_link_libraries(KinetiX_Server PRIVATE Threads::Threads)
@@ -52,10 +53,10 @@ add_executable(KinetiX_Client
         include/modelos_cliente.h
         include/gestor_config.h
 )
-
 target_include_directories(KinetiX_Client PRIVATE include src/client)
 if(WIN32)
     target_link_libraries(KinetiX_Client PRIVATE ws2_32)
+    target_link_options(KinetiX_Client PRIVATE -static-libgcc -static-libstdc++ -static)
 else()
     find_package(Threads REQUIRED)
     target_link_libraries(KinetiX_Client PRIVATE Threads::Threads)
