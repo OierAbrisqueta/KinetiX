@@ -1,62 +1,51 @@
 #ifndef KINETIX_PROTOCOLO_H
 #define KINETIX_PROTOCOLO_H
 
-/* =============================================================
- *  protocolo.h  —  Contrato de comunicacion cliente/servidor
- *  Incluir en AMBOS proyectos (servidor C y cliente C++)
- * ============================================================= */
+//Tamaños de buffer
+#define PROTO_BUFF_SIZE 4096
+#define PROTO_MAX_CAMPOS 16
 
-/* ── Tamaños de buffer ─────────────────────────────────────── */
-#define PROTO_BUFF_SIZE     4096
-#define PROTO_MAX_CAMPOS    16
+//Separadores
+#define PROTO_SEP_CAMPO "|"
+#define PROTO_SEP_FILA "\n"
+#define PROTO_SEP_CAMPO_C '|'
+#define PROTO_SEP_FILA_C '\n'
 
-/* ── Separadores ────────────────────────────────────────────── */
-#define PROTO_SEP_CAMPO     "|"
-#define PROTO_SEP_FILA      "\n"
-#define PROTO_SEP_CAMPO_C   '|'
-#define PROTO_SEP_FILA_C    '\n'
+//Comandos cliente a servidor
+#define CMD_LOGIN "LOGIN"
+#define CMD_EXIT "EXIT"
 
-/* ── Comandos (cliente → servidor) ─────────────────────────── */
-#define CMD_LOGIN               "LOGIN"
-#define CMD_EXIT                "EXIT"
+#define CMD_LIST_ESTACIONES "LIST_ESTACIONES"
+#define CMD_GET_ESTACION "GET_ESTACION"
+#define CMD_ADD_ESTACION "ADD_ESTACION"
+#define CMD_UPDATE_ESTACION "UPDATE_ESTACION"
+#define CMD_DELETE_ESTACION "DELETE_ESTACION"
 
-#define CMD_LIST_ESTACIONES     "LIST_ESTACIONES"
-#define CMD_GET_ESTACION        "GET_ESTACION"
-#define CMD_ADD_ESTACION        "ADD_ESTACION"
-#define CMD_UPDATE_ESTACION     "UPDATE_ESTACION"
-#define CMD_DELETE_ESTACION     "DELETE_ESTACION"
+#define CMD_LIST_VEHICULOS "LIST_VEHICULOS"
+#define CMD_GET_VEHICULO "GET_VEHICULO"
+#define CMD_ADD_VEHICULO "ADD_VEHICULO"
+#define CMD_UPDATE_VEHICULO "UPDATE_VEHICULO"
+#define CMD_BAJA_VEHICULO "BAJA_VEHICULO"
 
-#define CMD_LIST_VEHICULOS      "LIST_VEHICULOS"
-#define CMD_GET_VEHICULO        "GET_VEHICULO"
-#define CMD_ADD_VEHICULO        "ADD_VEHICULO"
-#define CMD_UPDATE_VEHICULO     "UPDATE_VEHICULO"
-#define CMD_BAJA_VEHICULO       "BAJA_VEHICULO"
+#define CMD_LIST_USUARIOS "LIST_USUARIOS"
+#define CMD_GET_USUARIO "GET_USUARIO"
+#define CMD_ADD_USUARIO "ADD_USUARIO"
+#define CMD_UPDATE_USUARIO "UPDATE_USUARIO"
+#define CMD_BAJA_USUARIO "BAJA_USUARIO"
 
-#define CMD_LIST_USUARIOS       "LIST_USUARIOS"
-#define CMD_GET_USUARIO         "GET_USUARIO"
-#define CMD_ADD_USUARIO         "ADD_USUARIO"
-#define CMD_UPDATE_USUARIO      "UPDATE_USUARIO"
-#define CMD_BAJA_USUARIO        "BAJA_USUARIO"
+#define CMD_LIST_ALQUILERES "LIST_ALQUILERES"
+#define CMD_ALQUILAR "ALQUILAR"
+#define CMD_DEVOLVER "DEVOLVER"
 
-#define CMD_LIST_ALQUILERES     "LIST_ALQUILERES"
-#define CMD_ALQUILAR            "ALQUILAR"
-#define CMD_DEVOLVER            "DEVOLVER"
+#define CMD_STAT "STAT"
 
-#define CMD_STAT  "STAT"
-
-/* ── Respuestas (servidor → cliente) ────────────────────────── */
-#define RESP_OK                 "OK"
-#define RESP_ERROR              "ERROR"
-#define RESP_BYE                "BYE"
-#define RESP_NOT_FOUND          "NOT_FOUND"
+//Respuestas servidor a cliente)
+#define RESP_OK "OK"
+#define RESP_ERROR "ERROR"
+#define RESP_BYE "BYE"
+#define RESP_NOT_FOUND "NOT_FOUND"
 
 /*
- * =============================================================
- *  ESPECIFICACION DEL PROTOCOLO
- *  Formato general: "<COMANDO> [arg]\n"
- *  El servidor siempre termina su respuesta con '\n'
- * =============================================================
- *
  *  LOGIN <dni>|<contrasena>
  *      OK  /  ERROR
  *

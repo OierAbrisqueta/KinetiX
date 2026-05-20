@@ -380,7 +380,7 @@ static void alquilar(void) {
             printf("  Error: ese ID no corresponde a ninguna estacion de la lista.\n");
     }
 
-    //Paso 2: Mostrar vehiculos de esa estacion
+    //Mostrar vehiculos de esa estacion
     ui_limpiar();
     printf("\n  --- Vehiculos disponibles en estacion %d ---\n", id_estacion);
     printf("  ................................................\n\n");
@@ -409,7 +409,7 @@ static void alquilar(void) {
         return;
     }
 
-    //Paso 3: Elegir vehiculo y confirmar
+    //Elegir vehiculo y confirmar
     printf("\n");
 
     int id_vehiculo = -1;

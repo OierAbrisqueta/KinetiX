@@ -11,12 +11,8 @@
 #include "hash_utils.h"
 #include "modelos.h"
 
-/* =============================================================
- *  protocolo_servidor.c  —  Handlers de cada comando
- * ============================================================= */
 
-/* ── Utilidades internas ────────────────────────────────────── */
-
+//Utilidades internas
 static void resp_simple(kinetix_socket_t s, const char *resp) {
     char buf[64];
     snprintf(buf, sizeof(buf), "%s\n", resp);
@@ -33,8 +29,7 @@ static int split_campos(char *src, char *campos[], int max) {
     return n;
 }
 
-/* ── Serializacion ──────────────────────────────────────────── */
-
+//Serializacion
 static void serializar_estacion(const Estacion *e, char *buf, int tam) {
     snprintf(buf, tam, "%d|%s|%s|%.6f|%.6f|%d|%d\n",
              e->id_estacion, e->nombre, e->direccion,
@@ -60,8 +55,7 @@ static void serializar_alquiler(const Alquiler *a, char *buf, int tam) {
              a->fecha_inicio, a->fecha_fin, a->coste_total);
 }
 
-/* ── Handlers de sesion ─────────────────────────────────────── */
-
+//Handlers de sesion
 static void handle_login(kinetix_socket_t s, const char *args) {
     if (!args || strlen(args) == 0) { resp_simple(s, RESP_ERROR); return; }
 
@@ -96,8 +90,7 @@ static void handle_login(kinetix_socket_t s, const char *args) {
     resp_simple(s, encontrado ? RESP_OK : RESP_ERROR);
 }
 
-/* ── Handlers de estaciones ─────────────────────────────────── */
-
+//Handlers de estaciones
 static void handle_list_estaciones(kinetix_socket_t s) {
     Estacion *lista = NULL;
     int n = 0;
@@ -178,8 +171,7 @@ static void handle_delete_estacion(kinetix_socket_t s, const char *args) {
     resp_simple(s, borrar_estacion(atoi(args)) == 0 ? RESP_OK : RESP_ERROR);
 }
 
-/* ── Handlers de vehiculos ──────────────────────────────────── */
-
+//Handlers de vehiculos
 static void handle_list_vehiculos(kinetix_socket_t s) {
     Vehiculo *lista = NULL;
     int n = 0;
@@ -256,8 +248,7 @@ static void handle_baja_vehiculo(kinetix_socket_t s, const char *args) {
     resp_simple(s, dar_de_baja_vehiculo(atoi(args)) == 0 ? RESP_OK : RESP_ERROR);
 }
 
-/* ── Handlers de usuarios ───────────────────────────────────── */
-
+//Handlers de usuarios
 static void handle_list_usuarios(kinetix_socket_t s) {
     Usuario *lista = NULL;
     int n = 0;
@@ -334,8 +325,7 @@ static void handle_baja_usuario(kinetix_socket_t s, const char *args) {
     resp_simple(s, dar_de_baja_usuario(atoi(args)) == 0 ? RESP_OK : RESP_ERROR);
 }
 
-/* ── Handlers de alquileres ─────────────────────────────────── */
-
+//Handlers de alquileres
 static void handle_list_alquileres(kinetix_socket_t s) {
     Alquiler *lista = NULL;
     int n = 0;
@@ -408,7 +398,7 @@ static void handle_alquilar(kinetix_socket_t s, const char *args) {
         v.id_estacion = 0;
         if (actualizar_vehiculo(v) != 0) break;
 
-        /* ── Decrementar disponibilidad de la estacion origen ── */
+        //Decrementar disponibilidad de la estacion origen
         Estacion est_orig;
         if (buscar_estacion(id_estacion_origen, &est_orig) == 0 &&
             est_orig.disponibilidad_actual > 0) {
@@ -523,7 +513,7 @@ static void handle_devolver(kinetix_socket_t s, const char *args) {
         ok = 0;
     }
 
-    /* ── Incrementar disponibilidad de la estacion destino ── */
+    //Incrementar disponibilidad de la estacion destino
     if (ok) {
         Estacion est_dest;
         if (buscar_estacion(id_estacion_destino, &est_dest) == 0 &&

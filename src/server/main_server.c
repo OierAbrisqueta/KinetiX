@@ -11,13 +11,6 @@
 #include "gestor_bd.h"
 #include "server_socket.h"
 
-/* =============================================================
- *  main_server.c  —  Punto de entrada del servidor remoto
- *
- *  Uso:  KinetiX_RemoteServer [ruta_config]
- *  Por defecto usa data/config.conf
- * ============================================================= */
-
 #ifdef _WIN32
 static unsigned __stdcall atender_cliente_thread_win(void *arg) {
     kinetix_socket_t cliente = *((kinetix_socket_t *)arg);
@@ -40,18 +33,18 @@ static void *atender_cliente_thread(void *arg) {
 
 int main(int argc, char *argv[]) {
 
-    /* ── 1. Cargar configuracion ─────────────────────────── */
+    //Cargar configuracion
     const char *ruta_conf = (argc > 1) ? argv[1] : CONFIG_RUTA_DEFAULT;
     if (config_cargar(ruta_conf) != 0)
         printf("[ARRANQUE] Continuando con valores por defecto.\n");
 
-    /* ── 2. Inicializar log ──────────────────────────────── */
+    //Inicializar log
     if (log_inicializar(g_config.log_ruta) != 0)
         printf("[ARRANQUE] Aviso: log no disponible.\n");
 
     LOG_I("=== KinetiX Servidor Remoto arrancando ===");
 
-    /* ── 3. Conectar base de datos ───────────────────────── */
+    //Conectar base de datos
     if (conectar_bd(g_config.db_ruta) != 0) {
         LOG_E("No se pudo conectar con la BD. Abortando.");
         log_cerrar();
@@ -59,7 +52,7 @@ int main(int argc, char *argv[]) {
     }
     LOG_I("Conexion con la base de datos establecida.");
 
-    /* ── 4. Iniciar socket de escucha ────────────────────── */
+    //Iniciar socket de escucha
     if (servidor_iniciar(g_config.puerto) != 0) {
         LOG_E("No se pudo iniciar el servidor de sockets. Abortando.");
         cerrar_bd();
@@ -67,7 +60,7 @@ int main(int argc, char *argv[]) {
         return EXIT_FAILURE;
     }
 
-    /* ── 5. Bucle principal ──────────────────────────────── */
+    //Bucle principal
     printf("  Servidor listo. Pulsa Ctrl+C para detener.\n\n");
 
     while (1) {
@@ -114,7 +107,7 @@ int main(int argc, char *argv[]) {
 #endif
     }
 
-    /* ── 6. Limpieza ─────────────────────────────────────── */
+    //Limpieza
     servidor_cerrar();
     cerrar_bd();
     log_cerrar();

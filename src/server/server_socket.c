@@ -7,14 +7,11 @@
 #include <string.h>
 #include "gestor_log.h"
 
-/* =============================================================
- *  server_socket.c  —  Implementacion de la capa de red
- * ============================================================= */
 
 //Socket de escucha
 static kinetix_socket_t g_socket_escucha = KINETIX_SOCKET_INVALIDO;
 
-//Servidor_iniciar
+//Servidor iniciar
 int servidor_iniciar(int puerto) {
 #ifdef _WIN32
     WSADATA wsa;
@@ -62,7 +59,7 @@ int servidor_iniciar(int puerto) {
     return 0;
 }
 
-//Servidor_aceptar_cliente
+//Servidor aceptar cliente
 kinetix_socket_t servidor_aceptar_cliente(void) {
     struct sockaddr_in cliente;
 #ifdef _WIN32
@@ -89,7 +86,7 @@ kinetix_socket_t servidor_aceptar_cliente(void) {
     return sock_cliente;
 }
 
-//Servidor_enviar
+//Servidor enviar
 int servidor_enviar(kinetix_socket_t s, const char *msg) {
     int total   = (int)strlen(msg);
     int enviado = 0;
@@ -101,7 +98,7 @@ int servidor_enviar(kinetix_socket_t s, const char *msg) {
     return 0;
 }
 
-//Servidor_recibir
+//Servidor recibir
 int servidor_recibir(kinetix_socket_t s, char *buf, int tam) {
     int total = 0;
     while (total < tam - 1) {
@@ -113,14 +110,14 @@ int servidor_recibir(kinetix_socket_t s, char *buf, int tam) {
     }
     buf[total] = '\0';
 
-    /* Eliminar '\n' y '\r' del final */
+    // Eliminar '\n' y '\r' del final
     while (total > 0 && (buf[total-1] == '\n' || buf[total-1] == '\r'))
         buf[--total] = '\0';
 
     return total;
 }
 
-//Servidor_atender_cliente
+//Servidor atender cliente
 void procesar_comando(kinetix_socket_t cliente, const char *cmd);
 
 void servidor_atender_cliente(kinetix_socket_t cliente) {
@@ -151,7 +148,7 @@ void servidor_atender_cliente(kinetix_socket_t cliente) {
     closesocket(cliente);
 }
 
-// Servidor_cerrar
+//Servidor cerrar
 void servidor_cerrar(void) {
     if (g_socket_escucha != KINETIX_SOCKET_INVALIDO) {
         closesocket(g_socket_escucha);
