@@ -362,8 +362,8 @@ static void handle_alquilar(kinetix_socket_t s, const char *args) {
     char *c[3];
     if (split_campos(copia, c, 3) < 3) { resp_simple(s, RESP_ERROR); return; }
 
-    int id_usuario  = atoi(c[0]);
-    int id_vehiculo = atoi(c[1]);
+    int id_usuario         = atoi(c[0]);
+    int id_vehiculo        = atoi(c[1]);
     int id_estacion_origen = atoi(c[2]);
 
     int ok = 0;
@@ -407,6 +407,14 @@ static void handle_alquilar(kinetix_socket_t s, const char *args) {
         v.estado = 'R';
         v.id_estacion = 0;
         if (actualizar_vehiculo(v) != 0) break;
+
+        /* ── Decrementar disponibilidad de la estacion origen ── */
+        Estacion est_orig;
+        if (buscar_estacion(id_estacion_origen, &est_orig) == 0 &&
+            est_orig.disponibilidad_actual > 0) {
+            est_orig.disponibilidad_actual--;
+            actualizar_estacion(est_orig);
+        }
 
         if (bd_commit_transaccion() != SQLITE_OK) break;
         ok = 1;
@@ -513,6 +521,16 @@ static void handle_devolver(kinetix_socket_t s, const char *args) {
         ok = (actualizar_vehiculo(v) == 0);
     } else if (ok) {
         ok = 0;
+    }
+
+    /* ── Incrementar disponibilidad de la estacion destino ── */
+    if (ok) {
+        Estacion est_dest;
+        if (buscar_estacion(id_estacion_destino, &est_dest) == 0 &&
+            est_dest.disponibilidad_actual < est_dest.capacidad_max) {
+            est_dest.disponibilidad_actual++;
+            actualizar_estacion(est_dest);
+        }
     }
 
     if (ok && bd_commit_transaccion() == SQLITE_OK) {

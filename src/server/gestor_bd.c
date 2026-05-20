@@ -737,7 +737,9 @@ int listar_alquileres(Alquiler **lista_out, int *cantidad_out) {
         arr[i].id_estacion_origen  = sqlite3_column_int(stmt, 3);
         arr[i].id_estacion_destino = sqlite3_column_int(stmt, 4);
         strncpy(arr[i].fecha_inicio, (const char*)sqlite3_column_text(stmt, 5), 19);
+        arr[i].fecha_inicio[19] = '\0';
         strncpy(arr[i].fecha_fin,    (const char*)sqlite3_column_text(stmt, 6), 19);
+        arr[i].fecha_fin[19] = '\0';
         arr[i].coste_total = (float)sqlite3_column_double(stmt, 7);
         i++;
     }
@@ -943,7 +945,9 @@ int buscar_alquiler_por_usuario(int id_usuario, Alquiler **lista_out, int *n_out
         alquileres[i].id_estacion_origen = sqlite3_column_int(stmt, 3);
         alquileres[i].id_estacion_destino = sqlite3_column_int(stmt, 4);
         strncpy(alquileres[i].fecha_inicio, (const char*)sqlite3_column_text(stmt, 5), 19);
+        alquileres[i].fecha_inicio[19] = '\0';
         strncpy(alquileres[i].fecha_fin, (const char*)sqlite3_column_text(stmt, 6), 19);
+        alquileres[i].fecha_fin[19] = '\0';
         alquileres[i].coste_total = (float)sqlite3_column_double(stmt, 7);
         i++;
     }

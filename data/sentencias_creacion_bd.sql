@@ -34,7 +34,7 @@ CREATE TABLE USUARIO (
 
 -- Tabla ALQUILER
 CREATE TABLE ALQUILER (
-                          id_alquiler INTEGER PRIMARY KEY,
+                          id_alquiler INTEGER PRIMARY KEY AUTOINCREMENT,
                           id_usuario INTEGER NOT NULL,
                           id_vehiculo INTEGER NOT NULL,
                           id_estacion_origen INTEGER NULL,

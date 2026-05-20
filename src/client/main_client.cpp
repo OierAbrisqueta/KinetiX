@@ -170,6 +170,7 @@ void net_cmd(const char *comando, char *buf, int tam) {
 
 
 void ui_limpiar(void) {
+    fflush(stdout);
 #ifdef _WIN32
     system("cls");
 #else
@@ -180,6 +181,7 @@ void ui_limpiar(void) {
 void ui_pausa(void) {
     printf("\n  ................................................\n");
     printf("\n  Pulse Enter para continuar...");
+    fflush(stdout);
     int c;
     while ((c = getchar()) != '\n' && c != EOF);
 }
@@ -404,7 +406,7 @@ static void alquilar(void) {
     if (disponibles == 0) {
         printf("\n  No hay vehiculos disponibles en esta estacion.\n");
         ui_pausa();
-
+        return;
     }
 
     //Paso 3: Elegir vehiculo y confirmar
@@ -673,8 +675,8 @@ int menu_autenticar(void) {
 void menu_principal(void) {
     int opcion;
     do {
-        refrescar_saldo();
         ui_limpiar();
+        refrescar_saldo();
         menu_banner();
         printf("  Bienvenido, %s  |  Saldo: %.2f EUR\n", g_nombre, g_saldo);
         if (g_alquiler_activo)

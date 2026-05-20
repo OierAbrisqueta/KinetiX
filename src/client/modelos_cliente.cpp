@@ -17,7 +17,7 @@ float Vehiculo::calcularCoste(double minutos) const {
 }
 
 int Vehiculo::estaDisponible() const {
-    return this->estado == 'D' && this->bateria > 15;
+    return this->estado == 'D';
 }
 void Vehiculo::descripcion(char *buf, int tam) const {
     char tipo_nombre[16];
