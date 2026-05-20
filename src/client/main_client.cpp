@@ -579,10 +579,10 @@ static void sincronizar_estado_inicial(void) {
             char cmd[64], resp[PROTO_BUFF_SIZE];
             snprintf(cmd, sizeof(cmd), CMD_GET_VEHICULO " %d\n", id_v);
             net_enviar(cmd);
-            net_recibir_linea(resp, sizeof(resp));          // "OK" o "NOT_FOUND"
+            net_recibir_linea(resp, sizeof(resp));
             if (strcmp(resp, RESP_OK) == 0) {
                 char vdata[PROTO_BUFF_SIZE];
-                net_recibir_linea(vdata, sizeof(vdata));    // "id|tipo|bat|est|estado"
+                net_recibir_linea(vdata, sizeof(vdata));
                 char tipo_s[2] = {0};
                 int vid, vest, vbat_dummy;
                 char vestado_s[2] = {0};
