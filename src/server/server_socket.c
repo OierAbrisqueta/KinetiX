@@ -11,10 +11,10 @@
  *  server_socket.c  —  Implementacion de la capa de red
  * ============================================================= */
 
-/* Socket de escucha (global al modulo) */
+//Socket de escucha
 static kinetix_socket_t g_socket_escucha = KINETIX_SOCKET_INVALIDO;
 
-/* ── servidor_iniciar ───────────────────────────────────────── */
+//Servidor_iniciar
 int servidor_iniciar(int puerto) {
 #ifdef _WIN32
     WSADATA wsa;
@@ -30,7 +30,7 @@ int servidor_iniciar(int puerto) {
         return -1;
     }
 
-    /* Permite reusar el puerto inmediatamente tras reiniciar */
+    // Permite reusar el puerto inmediatamente tras reiniciar
     int opt = 1;
     setsockopt(g_socket_escucha, SOL_SOCKET, SO_REUSEADDR,
                (const char *)&opt, sizeof(opt));
@@ -62,7 +62,7 @@ int servidor_iniciar(int puerto) {
     return 0;
 }
 
-/* ── servidor_aceptar_cliente ───────────────────────────────── */
+//Servidor_aceptar_cliente
 kinetix_socket_t servidor_aceptar_cliente(void) {
     struct sockaddr_in cliente;
 #ifdef _WIN32
@@ -89,7 +89,7 @@ kinetix_socket_t servidor_aceptar_cliente(void) {
     return sock_cliente;
 }
 
-/* ── servidor_enviar ────────────────────────────────────────── */
+//Servidor_enviar
 int servidor_enviar(kinetix_socket_t s, const char *msg) {
     int total   = (int)strlen(msg);
     int enviado = 0;
@@ -101,7 +101,7 @@ int servidor_enviar(kinetix_socket_t s, const char *msg) {
     return 0;
 }
 
-/* ── servidor_recibir ───────────────────────────────────────── */
+//Servidor_recibir
 int servidor_recibir(kinetix_socket_t s, char *buf, int tam) {
     int total = 0;
     while (total < tam - 1) {
@@ -120,7 +120,7 @@ int servidor_recibir(kinetix_socket_t s, char *buf, int tam) {
     return total;
 }
 
-/* ── servidor_atender_cliente ───────────────────────────────── */
+//Servidor_atender_cliente
 void procesar_comando(kinetix_socket_t cliente, const char *cmd);
 
 void servidor_atender_cliente(kinetix_socket_t cliente) {
@@ -151,7 +151,7 @@ void servidor_atender_cliente(kinetix_socket_t cliente) {
     closesocket(cliente);
 }
 
-/* ── servidor_cerrar ────────────────────────────────────────── */
+// Servidor_cerrar
 void servidor_cerrar(void) {
     if (g_socket_escucha != KINETIX_SOCKET_INVALIDO) {
         closesocket(g_socket_escucha);

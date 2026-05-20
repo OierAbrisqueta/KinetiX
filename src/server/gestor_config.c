@@ -44,7 +44,7 @@ static void aplicar(const char *clave, const char *valor) {
 
 int config_cargar(const char *ruta) {
     memset(&g_config, 0, sizeof(Config));
-    /* Valores por defecto */
+    // Valores por defecto
     g_config.puerto = 8080; g_config.max_conexiones = 10; g_config.bateria_minima = 15;
     g_config.tarifa_bici_min = 0.05f; g_config.tarifa_patinete_min = 0.07f;
     strncpy(g_config.ip_servidor,   "127.0.0.1",        CONFIG_MAX_VALOR-1);

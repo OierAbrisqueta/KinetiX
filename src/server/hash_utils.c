@@ -3,9 +3,6 @@
 #include <stdint.h>
 #include "hash_utils.h"
 
-/* =============================================================
- *  hash_utils.c  —  SHA-256 portable
- * ============================================================= */
 
 static uint32_t rotr32(uint32_t x, uint32_t n) { return (x >> n) | (x << (32 - n)); }
 
