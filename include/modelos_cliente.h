@@ -3,16 +3,6 @@
 
 #include "Vehicle.hpp"
 
-//Patinete
-class Patinete: public Vehiculo {
-public:
-    Patinete(int id, float bateria, int id_estacion, char estado);
-
-    float getTarifaMinuto() const override;
-    void  getTipoNombre(char *buf, int tam) const override;
-};
-
-
 //Estacion
 struct Estacion {
     int   id_estacion;
