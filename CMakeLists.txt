@@ -48,9 +48,7 @@ endif()
 # Ejecutable 3: cliente remoto (Fase 2)
 add_executable(KinetiX_Client
         src/client/main_client.cpp
-        src/client/modelos_cliente.cpp
         src/server/gestor_config.c
-        include/modelos_cliente.h
         include/gestor_config.h
         include/Vehicle.hpp
         src/client/Vehicle.cpp
@@ -58,6 +56,8 @@ add_executable(KinetiX_Client
         src/client/Bicicleta.cpp
         include/Patinete.hpp
         src/client/Patinete.cpp
+        include/Estacion.hpp
+        src/client/Estacion.cpp
 )
 target_include_directories(KinetiX_Client PRIVATE include src/client)
 if(WIN32)

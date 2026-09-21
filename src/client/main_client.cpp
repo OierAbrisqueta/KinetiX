@@ -1,4 +1,5 @@
-#include "modelos_cliente.h"
+#include "Vehicle.hpp"
+#include "Estacion.hpp"
 #include "protocolo.h"
 #include "gestor_config.h"
 #ifdef _WIN32
@@ -58,7 +59,12 @@ static void cache_cargar(void) {
     for (int i = 0; i < n_est; i++) {
         char linea[PROTO_BUFF_SIZE];
         net_recibir_linea(linea, sizeof(linea));
-        g_cache_estaciones.push_back(Estacion::fromString(linea));
+
+        auto estOp = Estacion::fromString(linea);
+
+        if (estOp.has_value()) {
+            g_cache_estaciones.push_back(estOp.value());
+        }
     }
 
     // Vehiculos
@@ -271,10 +277,10 @@ static void ver_estaciones(void) {
         char libres[16];
 
         snprintf(libres, sizeof(libres), "%d/%d",
-                 e.disponibilidad_actual, e.capacidad_max);
+                 e.getDisponibilidadActual(), e.getCapacidadMaxima());
 
         printf("  %-6d  %-25s  %-10s  %d%%\n",
-               e.id_estacion, e.nombre, libres, (int)e.getOcupacion());
+               e.getIdEstacion(), e.getNombre().c_str(), libres, (int)e.getOcupacion());
     }
 
     printf("  ................................................\n");
@@ -359,10 +365,10 @@ static void alquilar(void) {
         const Estacion &e = g_cache_estaciones[i];
 
         printf("  %-6d  %-26s  %d/%d\n",
-               e.id_estacion, e.nombre,
-               e.disponibilidad_actual, e.capacidad_max);
+               e.getIdEstacion(), e.getNombre().c_str(),
+               e.getDisponibilidadActual(), e.getCapacidadMaxima());
 
-        if (e.id_estacion > max_id_est) max_id_est = e.id_estacion;
+        if (e.getIdEstacion() > max_id_est) max_id_est = e.getIdEstacion();
     }
 
     int id_estacion = -1;
@@ -371,7 +377,7 @@ static void alquilar(void) {
         int elegido = ui_leer_int("Selecciona una estacion (ID)", 1, max_id_est);
         for (int i = 0; i < g_cache_estaciones.size(); i++) {
             Estacion &e = g_cache_estaciones[i];
-            if (e.id_estacion == elegido) {
+            if (e.getIdEstacion() == elegido) {
                 id_estacion = elegido;
                 break;
             }
@@ -473,8 +479,8 @@ static void devolver(void) {
     for (int i = 0; i < g_cache_estaciones.size(); i++) {
         Estacion &e = g_cache_estaciones[i];
         printf("  %-6d  %-26s  %d/%d\n",
-               e.id_estacion, e.nombre,
-               e.disponibilidad_actual, e.capacidad_max);
+               e.getIdEstacion(), e.getNombre().c_str(),
+               e.getDisponibilidadActual(), e.getCapacidadMaxima());
     }
     printf("\n");
 
