@@ -1,6 +1,7 @@
 #include "Vehicle.hpp"
 
 #include "modelos_cliente.h"
+#include "Bicicleta.hpp"
 
 //Vehiculo
 Vehiculo::Vehiculo(int id, char tipo, float bateria, int id_estacion, char estado) {

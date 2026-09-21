@@ -3,16 +3,6 @@
 
 #include "Vehicle.hpp"
 
-//Bicicleta
-class Bicicleta: public Vehiculo {
-public:
-    Bicicleta(int id, float bateria, int id_estacion, char estado);
-
-    float getTarifaMinuto() const override;
-    void  getTipoNombre(char *buf, int tam) const override;
-};
-
-
 //Patinete
 class Patinete: public Vehiculo {
 public:

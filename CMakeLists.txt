@@ -54,6 +54,8 @@ add_executable(KinetiX_Client
         include/gestor_config.h
         include/Vehicle.hpp
         src/client/Vehicle.cpp
+        include/Bicicleta.hpp
+        src/client/Bicicleta.cpp
 )
 target_include_directories(KinetiX_Client PRIVATE include src/client)
 if(WIN32)
