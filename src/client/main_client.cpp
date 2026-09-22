@@ -2,6 +2,7 @@
 #include "Estacion.hpp"
 #include "protocolo.h"
 #include "gestor_config.h"
+#include "CacheManager.hpp"
 #include <cstdio>
 #include <cstring>
 #include <vector>
@@ -16,60 +17,6 @@ static float g_saldo = 0.0f;
 static int g_alquiler_activo = 0;  // 0 = sin alquiler en curso
 static int g_vehiculo_activo = 0;
 static char g_tipo_vehiculo_activo = '\0';
-
-//Caché Local
-static std::vector<Estacion> g_cache_estaciones;
-static std::map<int, std::unique_ptr<Vehiculo>> g_cache_vehiculos;
-static bool g_cache_valida = false;
-
-//Descarga estaciones y vehiculos del servidor y llena el cache
-static void cache_cargar(void) {
-    g_cache_estaciones.clear();
-    g_cache_vehiculos.clear();
-
-    // Estaciones
-    net_enviar(CMD_LIST_ESTACIONES "\n");
-    char buf[32];
-    net_recibir_linea(buf, sizeof(buf));
-    int n_est = atoi(buf);
-
-    for (int i = 0; i < n_est; i++) {
-        char linea[PROTO_BUFF_SIZE];
-        net_recibir_linea(linea, sizeof(linea));
-
-        auto estOp = Estacion::fromString(linea);
-
-        if (estOp.has_value()) {
-            g_cache_estaciones.push_back(estOp.value());
-        }
-    }
-
-    // Vehiculos
-    net_enviar(CMD_LIST_VEHICULOS "\n");
-    net_recibir_linea(buf, sizeof(buf));
-    int n_veh = atoi(buf);
-
-    for (int i = 0; i < n_veh; i++) {
-        char linea[PROTO_BUFF_SIZE];
-        net_recibir_linea(linea, sizeof(linea));
-        auto v = Vehiculo::fromString(linea);
-        if (v) {
-            int id = v->id_vehiculo;
-            g_cache_vehiculos[id] = std::move(v);
-        }
-    }
-
-    g_cache_valida = true;
-}
-
-// Invalida el cache
-static void cache_invalidar(void) {
-    g_cache_valida = false;
-}
-
-static void cache_asegurar(void) {
-    if (!g_cache_valida) cache_cargar();
-}
 
 //Sincroniza el saldo del usuario con el servidor.
 static void refrescar_saldo(void) {
@@ -176,14 +123,15 @@ void ui_leer_string(const char *msg, char *buf, int max) {
 
 
 // Muestra el listado de todas las estaciones
-static void ver_estaciones(void) {
+static void ver_estaciones(CacheManager& cache) {
     ui_limpiar();
     printf("\n  --- Listado de estaciones ---\n");
     printf("  ................................................\n\n");
 
-    cache_asegurar();
+    cache.cache_cargar();
+    const auto& estaciones = cache.getEstaciones();
 
-    if (g_cache_estaciones.empty()) {
+    if (estaciones.empty()) {
         printf("  No hay estaciones registradas.\n");
         ui_pausa();
         return;
@@ -192,8 +140,8 @@ static void ver_estaciones(void) {
     printf("  %-6s  %-25s  %-10s  %s\n", "ID", "Nombre", "Libres", "Ocupacion");
     printf("  ------  -------------------------  ----------  ---------\n");
 
-    for (int i = 0; i < (int)g_cache_estaciones.size(); i++) {
-        const Estacion &e = g_cache_estaciones[i];
+    for (int i = 0; i < (int)estaciones.size(); i++) {
+        const Estacion &e = estaciones[i];
         char libres[16];
 
         snprintf(libres, sizeof(libres), "%d/%d",
@@ -204,19 +152,20 @@ static void ver_estaciones(void) {
     }
 
     printf("  ................................................\n");
-    printf("  Total: %d estaciones.\n", (int)g_cache_estaciones.size());
+    printf("  Total: %d estaciones.\n", (int)estaciones.size());
     ui_pausa();
 }
 
 // Muestra los vehiculos disponibles para alquilar
-static void ver_vehiculos_disponibles(void) {
+static void ver_vehiculos_disponibles(CacheManager& cache) {
     ui_limpiar();
     printf("\n  --- Vehiculos disponibles ---\n");
     printf("  ................................................\n\n");
 
-    cache_asegurar();
+    cache.cache_asegurar();
+    const auto& vehiculos = cache.getVehiculos();
 
-    if (g_cache_vehiculos.empty()) {
+    if (vehiculos.empty()) {
         printf("  No hay vehículos registrados.\n");
         ui_pausa();
         return;
@@ -228,7 +177,7 @@ static void ver_vehiculos_disponibles(void) {
 
     int mostrados = 0;
 
-    for (const auto &par : g_cache_vehiculos) {
+    for (const auto &par : vehiculos) {
         const auto &v = par.second;
         if (v->estaDisponible()) {
             char tipo_nombre[16];
@@ -249,7 +198,7 @@ static void ver_vehiculos_disponibles(void) {
 }
 
 // Permite al usuario alquilar un vehiculo
-static void alquilar(void) {
+static void alquilar(CacheManager& cache) {
     ui_limpiar();
     printf("\n  --- Alquilar vehiculo ---\n");
     printf("  ................................................\n\n");
@@ -268,9 +217,11 @@ static void alquilar(void) {
         return;
     }
 
-    cache_asegurar();
+    cache.cache_asegurar();
+    const auto& estaciones = cache.getEstaciones();
+    const auto& vehiculos = cache.getVehiculos();
 
-    if (g_cache_estaciones.empty()) {
+    if (estaciones.empty()) {
         printf("  No hay estaciones disponibles.\n");
         ui_pausa();
         return;
@@ -281,8 +232,8 @@ static void alquilar(void) {
 
     int max_id_est = 1;
 
-    for (int i = 0; i < (int)g_cache_estaciones.size(); i++) {
-        const Estacion &e = g_cache_estaciones[i];
+    for (int i = 0; i < (int)estaciones.size(); i++) {
+        const Estacion &e = estaciones[i];
 
         printf("  %-6d  %-26s  %d/%d\n",
                e.getIdEstacion(), e.getNombre().c_str(),
@@ -295,8 +246,8 @@ static void alquilar(void) {
     while (id_estacion == -1) {
         printf("\n");
         int elegido = ui_leer_int("Selecciona una estacion (ID)", 1, max_id_est);
-        for (int i = 0; i < g_cache_estaciones.size(); i++) {
-            Estacion &e = g_cache_estaciones[i];
+        for (int i = 0; i < estaciones.size(); i++) {
+            const Estacion &e = estaciones[i];
             if (e.getIdEstacion() == elegido) {
                 id_estacion = elegido;
                 break;
@@ -316,7 +267,7 @@ static void alquilar(void) {
 
     int max_id_veh = 1;
     int disponibles = 0;
-    for (const auto &par : g_cache_vehiculos) {
+    for (const auto &par : vehiculos) {
         const auto &v = par.second;
         if (v->id_estacion == id_estacion && v->estaDisponible()) {
             char tipo_nombre[16];
@@ -341,8 +292,8 @@ static void alquilar(void) {
     int id_vehiculo = -1;
     while (id_vehiculo == -1) {
         int elegido = ui_leer_int("ID del vehiculo a alquilar", 1, max_id_veh);
-        auto it = g_cache_vehiculos.find(elegido);
-        if (it != g_cache_vehiculos.end()
+        auto it = vehiculos.find(elegido);
+        if (it != vehiculos.end()
             && it->second->id_estacion == id_estacion
             && it->second->estaDisponible()) {
             id_vehiculo = elegido;
@@ -363,9 +314,9 @@ static void alquilar(void) {
         sscanf(resp, "OK %d", &id_alquiler);
         g_alquiler_activo = id_alquiler;
         g_vehiculo_activo = id_vehiculo;
-        g_tipo_vehiculo_activo = g_cache_vehiculos[id_vehiculo]->tipo;
+        g_tipo_vehiculo_activo = vehiculos.at(id_vehiculo)->tipo;
 
-        cache_invalidar();
+        cache.cache_invalidar();
 
         printf("\n  Alquiler iniciado correctamente.\n");
         printf("  ID de alquiler: %d\n", id_alquiler);
@@ -378,7 +329,7 @@ static void alquilar(void) {
 }
 
 // Permite al usuario devolver el vehiculo que tiene alquilado
-static void devolver(void) {
+static void devolver(CacheManager& cache) {
     ui_limpiar();
     printf("\n  --- Devolver vehiculo ---\n");
     printf("  ................................................\n\n");
@@ -392,12 +343,13 @@ static void devolver(void) {
     printf("  Alquiler activo  : ID %d\n", g_alquiler_activo);
     printf("  Vehiculo en uso  : ID %d\n\n", g_vehiculo_activo);
 
-    cache_asegurar();
+    cache.cache_asegurar();
+    const auto& estaciones = cache.getEstaciones();
 
     printf("  %-6s  %-26s  %s\n", "ID", "Nombre", "Libres");
     printf("  ------  --------------------------  -------\n");
-    for (int i = 0; i < g_cache_estaciones.size(); i++) {
-        Estacion &e = g_cache_estaciones[i];
+    for (int i = 0; i < estaciones.size(); i++) {
+        const Estacion &e = estaciones[i];
         printf("  %-6d  %-26s  %d/%d\n",
                e.getIdEstacion(), e.getNombre().c_str(),
                e.getDisponibilidadActual(), e.getCapacidadMaxima());
@@ -429,7 +381,7 @@ static void devolver(void) {
         g_vehiculo_activo = 0;
         g_tipo_vehiculo_activo = '\0';
 
-        cache_invalidar();
+        cache.cache_invalidar();
         refrescar_saldo();
     } else {
         printf("\n  Error al devolver el vehiculo. Intentalo de nuevo.\n");
@@ -613,7 +565,7 @@ int menu_autenticar(void) {
     return 0;
 }
 
-void menu_principal(void) {
+void menu_principal(CacheManager& cache) {
     int opcion;
     do {
         ui_limpiar();
@@ -637,10 +589,10 @@ void menu_principal(void) {
         opcion = ui_leer_int("Seleccione opcion", 0, 6);
 
         switch (opcion) {
-            case 1: ver_estaciones(); break;
-            case 2: ver_vehiculos_disponibles(); break;
-            case 3: alquilar(); break;
-            case 4: devolver(); break;
+            case 1: ver_estaciones(cache); break;
+            case 2: ver_vehiculos_disponibles(cache); break;
+            case 3: alquilar(cache); break;
+            case 4: devolver(cache); break;
             case 5: mis_alquileres(); break;
             case 6: consultar_estado(); break;
             case 0:
@@ -668,7 +620,9 @@ int main(void) {
     printf("  Conexion establecida.\n\n");
 
     if (menu_autenticar()) {
-        menu_principal();
+        CacheManager cache;
+
+        menu_principal(cache);
 
         // Enviamos EXIT al cerrar sesion
         char resp[32];
