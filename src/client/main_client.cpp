@@ -6,9 +6,9 @@
 #include <cstdio>
 #include <cstring>
 #include <vector>
-#include <map>
 #include <memory>
 #include "Network.hpp"
+#include "ConsoleUI.hpp"
 
 static int g_id_usuario = 0;
 static char g_nombre[64] = {0};
@@ -42,89 +42,9 @@ static void refrescar_saldo(void) {
     }
 }
 
-void ui_limpiar(void) {
-    fflush(stdout);
-#ifdef _WIN32
-    system("cls");
-#else
-    system("clear");
-#endif
-}
-
-void ui_pausa(void) {
-    printf("\n  ................................................\n");
-    printf("\n  Pulse Enter para continuar...");
-    fflush(stdout);
-    int c;
-    while ((c = getchar()) != '\n' && c != EOF);
-}
-
-void menu_banner(void) {
-    printf("\n");
-    printf("  ================================================\n");
-    printf("\n");
-    printf("    K I N E T I X\n");
-    printf("\n");
-    printf("    Gestion de Flota  .  Cliente Remoto\n");
-    printf("\n");
-    printf("  ================================================\n");
-    printf("\n");
-}
-
-// Limpia el buffer de teclado
-static void limpiar_buffer(void) {
-    int c;
-    while ((c = getchar()) != '\n' && c != EOF) {}
-}
-
-// Lee un entero en un rango. Valida que sea un numero y este en rango.
-int ui_leer_int(const char *msg, int min, int max) {
-    char buf[64];
-    int  valor;
-    char extra;
-
-    while (1) {
-        printf("  %s [%d-%d]: ", msg, min, max);
-
-        if (!fgets(buf, sizeof(buf), stdin)) continue;
-
-        // Si no cabe en el buffer, limpiamos el resto
-        if (strchr(buf, '\n') == NULL) limpiar_buffer();
-
-        // Verificar que sea un entero sin caracteres extra
-        if (sscanf(buf, " %d %c", &valor, &extra) != 1) {
-            printf("  Error: Debes introducir un entero valido sin letras.\n");
-            continue;
-        }
-
-        if (valor < min || valor > max) {
-            printf("  Error: El numero debe estar entre %d y %d.\n", min, max);
-            continue;
-        }
-
-        return valor;
-    }
-}
-
-// Lee una cadena de texto
-void ui_leer_string(const char *msg, char *buf, int max) {
-    printf("  %s:  ", msg);
-    if (fgets(buf, max, stdin)) {
-        int len = (int)strlen(buf);
-        if (len > 0 && buf[len-1] == '\n') {
-            buf[len-1] = '\0';
-        } else {
-            limpiar_buffer();
-        }
-    } else if (max > 0) {
-        buf[0] = '\0';
-    }
-}
-
-
 // Muestra el listado de todas las estaciones
 static void ver_estaciones(CacheManager& cache) {
-    ui_limpiar();
+    ConsoleUI::limpiar();
     printf("\n  --- Listado de estaciones ---\n");
     printf("  ................................................\n\n");
 
@@ -133,7 +53,7 @@ static void ver_estaciones(CacheManager& cache) {
 
     if (estaciones.empty()) {
         printf("  No hay estaciones registradas.\n");
-        ui_pausa();
+        ConsoleUI::pausa();
         return;
     }
 
@@ -153,12 +73,12 @@ static void ver_estaciones(CacheManager& cache) {
 
     printf("  ................................................\n");
     printf("  Total: %d estaciones.\n", (int)estaciones.size());
-    ui_pausa();
+    ConsoleUI::pausa();
 }
 
 // Muestra los vehiculos disponibles para alquilar
 static void ver_vehiculos_disponibles(CacheManager& cache) {
-    ui_limpiar();
+    ConsoleUI::limpiar();
     printf("\n  --- Vehiculos disponibles ---\n");
     printf("  ................................................\n\n");
 
@@ -167,7 +87,7 @@ static void ver_vehiculos_disponibles(CacheManager& cache) {
 
     if (vehiculos.empty()) {
         printf("  No hay vehículos registrados.\n");
-        ui_pausa();
+        ConsoleUI::pausa();
         return;
     }
 
@@ -194,26 +114,26 @@ static void ver_vehiculos_disponibles(CacheManager& cache) {
 
     printf("  ................................................\n");
     printf("  Total disponibles: %d vehiculos.\n", mostrados);
-    ui_pausa();
+    ConsoleUI::pausa();
 }
 
 // Permite al usuario alquilar un vehiculo
 static void alquilar(CacheManager& cache) {
-    ui_limpiar();
+    ConsoleUI::limpiar();
     printf("\n  --- Alquilar vehiculo ---\n");
     printf("  ................................................\n\n");
 
     if (g_alquiler_activo != 0) {
         printf("  Ya tienes un alquiler en curso (ID: %d).\n", g_alquiler_activo);
         printf("  Devuelve el vehiculo actual antes de alquilar otro.\n");
-        ui_pausa();
+        ConsoleUI::pausa();
         return;
     }
 
     if (g_saldo <= 0.0f) {
         printf("  Saldo insuficiente (%.2f EUR).\n", g_saldo);
         printf("  Recarga tu saldo para poder alquilar.\n");
-        ui_pausa();
+        ConsoleUI::pausa();
         return;
     }
 
@@ -223,7 +143,7 @@ static void alquilar(CacheManager& cache) {
 
     if (estaciones.empty()) {
         printf("  No hay estaciones disponibles.\n");
-        ui_pausa();
+        ConsoleUI::pausa();
         return;
     }
 
@@ -245,7 +165,7 @@ static void alquilar(CacheManager& cache) {
     int id_estacion = -1;
     while (id_estacion == -1) {
         printf("\n");
-        int elegido = ui_leer_int("Selecciona una estacion (ID)", 1, max_id_est);
+        int elegido = ConsoleUI::ui_leer_int("Selecciona una estacion (ID)", 1, max_id_est);
         for (int i = 0; i < estaciones.size(); i++) {
             const Estacion &e = estaciones[i];
             if (e.getIdEstacion() == elegido) {
@@ -258,7 +178,7 @@ static void alquilar(CacheManager& cache) {
     }
 
     //Mostrar vehiculos de esa estacion
-    ui_limpiar();
+    ConsoleUI::limpiar();
     printf("\n  --- Vehiculos disponibles en estacion %d ---\n", id_estacion);
     printf("  ................................................\n\n");
 
@@ -282,7 +202,7 @@ static void alquilar(CacheManager& cache) {
 
     if (disponibles == 0) {
         printf("\n  No hay vehiculos disponibles en esta estacion.\n");
-        ui_pausa();
+        ConsoleUI::pausa();
         return;
     }
 
@@ -291,7 +211,7 @@ static void alquilar(CacheManager& cache) {
 
     int id_vehiculo = -1;
     while (id_vehiculo == -1) {
-        int elegido = ui_leer_int("ID del vehiculo a alquilar", 1, max_id_veh);
+        int elegido = ConsoleUI::ui_leer_int("ID del vehiculo a alquilar", 1, max_id_veh);
         auto it = vehiculos.find(elegido);
         if (it != vehiculos.end()
             && it->second->id_estacion == id_estacion
@@ -325,18 +245,18 @@ static void alquilar(CacheManager& cache) {
         printf("\n  Error al iniciar el alquiler.\n");
         printf("  Comprueba que el ID del vehiculo sea correcto.\n");
     }
-    ui_pausa();
+    ConsoleUI::pausa();
 }
 
 // Permite al usuario devolver el vehiculo que tiene alquilado
 static void devolver(CacheManager& cache) {
-    ui_limpiar();
+    ConsoleUI::limpiar();
     printf("\n  --- Devolver vehiculo ---\n");
     printf("  ................................................\n\n");
 
     if (g_alquiler_activo == 0) {
         printf("  No tienes ningun alquiler en curso.\n");
-        ui_pausa();
+        ConsoleUI::pausa();
         return;
     }
 
@@ -356,7 +276,7 @@ static void devolver(CacheManager& cache) {
     }
     printf("\n");
 
-    int id_estacion = ui_leer_int("ID de la estacion de destino", 1, 99999);
+    int id_estacion = ConsoleUI::ui_leer_int("ID de la estacion de destino", 1, 99999);
 
     // Confirmacion antes de devolver
     printf("\n  Confirmar devolucion en estacion %d (s/n): ", id_estacion);
@@ -364,7 +284,7 @@ static void devolver(CacheManager& cache) {
     fgets(conf, sizeof(conf), stdin);
     if (conf[0] != 's' && conf[0] != 'S') {
         printf("  Operacion cancelada.\n");
-        ui_pausa();
+        ConsoleUI::pausa();
         return;
     }
 
@@ -386,12 +306,12 @@ static void devolver(CacheManager& cache) {
     } else {
         printf("\n  Error al devolver el vehiculo. Intentalo de nuevo.\n");
     }
-    ui_pausa();
+    ConsoleUI::pausa();
 }
 
 // Muestra el historial de alquileres del usuario actual
 static void mis_alquileres(void) {
-    ui_limpiar();
+    ConsoleUI::limpiar();
     printf("\n  --- Mis alquileres ---\n");
     printf("  ................................................\n\n");
 
@@ -428,7 +348,7 @@ static void mis_alquileres(void) {
     if (total == 0) printf("  No tienes alquileres registrados.\n");
     printf("  ................................................\n");
     printf("  Total: %d alquileres.\n", total);
-    ui_pausa();
+    ConsoleUI::pausa();
 }
 
 // Comprueba al arrancar si el usuario ya tiene un alquiler activo
@@ -475,7 +395,7 @@ static void sincronizar_estado_inicial(void) {
 
 // Muestra saldo actualizado y estado del vehiculo activo
 static void consultar_estado(void) {
-    ui_limpiar();
+    ConsoleUI::limpiar();
     printf("\n  --- Estado de tu cuenta ---\n");
     printf("  ................................................\n\n");
 
@@ -484,7 +404,7 @@ static void consultar_estado(void) {
 
     if (g_alquiler_activo == 0) {
         printf("  Alquiler activo  : Ninguno\n");
-        ui_pausa();
+        ConsoleUI::pausa();
         return;
     }
 
@@ -507,7 +427,7 @@ static void consultar_estado(void) {
         printf("  Km estimados     : %.1f km\n", km);
         printf("  Coste acumulado  : %.2f EUR\n", coste);
     }
-    ui_pausa();
+    ConsoleUI::pausa();
 }
 
 int menu_autenticar(void) {
@@ -515,12 +435,12 @@ int menu_autenticar(void) {
     int intentos = 3;
 
     while (intentos > 0) {
-        ui_limpiar();
-        menu_banner();
+        ConsoleUI::limpiar();
+        ConsoleUI::menu_banner();
         printf("  Acceso restringido. Identifiquese.\n\n");
 
-        ui_leer_string("DNI", dni, sizeof(dni));
-        ui_leer_string("Contrasena", clave, sizeof(clave));
+        ConsoleUI::ui_leer_string("DNI", dni, sizeof(dni));
+        ConsoleUI::ui_leer_string("Contrasena", clave, sizeof(clave));
 
         // Enviamos el login al servidor
         char comando[256];
@@ -551,14 +471,14 @@ int menu_autenticar(void) {
             }
 
             printf("\n  Bienvenido, %s.\n", g_nombre);
-            ui_pausa();
+            ConsoleUI::pausa();
             sincronizar_estado_inicial();
             return 1;
         }
 
         intentos--;
         printf("\n  Credenciales incorrectas. Intentos restantes: %d\n", intentos);
-        if (intentos > 0) ui_pausa();
+        if (intentos > 0) ConsoleUI::pausa();
     }
 
     printf("\n  Demasiados intentos fallidos. El programa se cerrara.\n\n");
@@ -568,9 +488,9 @@ int menu_autenticar(void) {
 void menu_principal(CacheManager& cache) {
     int opcion;
     do {
-        ui_limpiar();
+        ConsoleUI::limpiar();
         refrescar_saldo();
-        menu_banner();
+        ConsoleUI::menu_banner();
         printf("  Bienvenido, %s  |  Saldo: %.2f EUR\n", g_nombre, g_saldo);
         if (g_alquiler_activo)
             printf("  Alquiler activo: ID %d\n", g_alquiler_activo);
@@ -586,7 +506,7 @@ void menu_principal(CacheManager& cache) {
         printf("    [ 0 ]  Cerrar sesion\n");
         printf("\n");
 
-        opcion = ui_leer_int("Seleccione opcion", 0, 6);
+        opcion = ConsoleUI::ui_leer_int("Seleccione opcion", 0, 6);
 
         switch (opcion) {
             case 1: ver_estaciones(cache); break;
@@ -601,7 +521,7 @@ void menu_principal(CacheManager& cache) {
                 break;
             default:
                 printf("  Opcion no valida.\n");
-                ui_pausa();
+                ConsoleUI::pausa();
                 break;
         }
     } while (opcion != 0);

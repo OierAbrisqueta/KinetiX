@@ -62,6 +62,8 @@ add_executable(KinetiX_Client
         src/client/Network.cpp
         include/CacheManager.hpp
         src/client/CacheManager.cpp
+        include/ConsoleUI.hpp
+        src/client/ConsoleUI.cpp
 )
 target_include_directories(KinetiX_Client PRIVATE include src/client)
 if(WIN32)
