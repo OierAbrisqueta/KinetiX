@@ -58,6 +58,8 @@ add_executable(KinetiX_Client
         src/client/Patinete.cpp
         include/Estacion.hpp
         src/client/Estacion.cpp
+        include/Network.hpp
+        src/client/Network.cpp
 )
 target_include_directories(KinetiX_Client PRIVATE include src/client)
 if(WIN32)

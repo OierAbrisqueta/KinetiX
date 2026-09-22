@@ -2,32 +2,12 @@
 #include "Estacion.hpp"
 #include "protocolo.h"
 #include "gestor_config.h"
-#ifdef _WIN32
-#include <winsock2.h>
-#include <ws2tcpip.h>
-#pragma comment(lib, "ws2_32.lib")
-#else
-#include <arpa/inet.h>
-#include <netinet/in.h>
-#include <sys/socket.h>
-#include <sys/types.h>
-#include <unistd.h>
-#include <signal.h>
-#endif
 #include <cstdio>
-#include <cstdlib>
 #include <cstring>
 #include <vector>
 #include <map>
 #include <memory>
-
-#ifdef _WIN32
-static SOCKET g_sock = INVALID_SOCKET;
-#else
-using SocketHandle = int;
-static const SocketHandle INVALID_SOCKET = -1;
-static SocketHandle g_sock = INVALID_SOCKET;
-#endif
+#include "Network.hpp"
 
 static int g_id_usuario = 0;
 static char g_nombre[64] = {0};
@@ -41,9 +21,6 @@ static char g_tipo_vehiculo_activo = '\0';
 static std::vector<Estacion> g_cache_estaciones;
 static std::map<int, std::unique_ptr<Vehiculo>> g_cache_vehiculos;
 static bool g_cache_valida = false;
-
-void net_enviar(const char *msg);
-void net_recibir_linea(char *buf, int tam);
 
 //Descarga estaciones y vehiculos del servidor y llena el cache
 static void cache_cargar(void) {
@@ -117,63 +94,6 @@ static void refrescar_saldo(void) {
         g_saldo = saldo;
     }
 }
-
-// Conecta al servidor. Devuelve 0 si ok, -1 si error.
-int net_conectar(const char *ip, int puerto) {
-#ifdef _WIN32
-    WSADATA wsa;
-    WSAStartup(MAKEWORD(2, 2), &wsa);
-#else
-    signal(SIGPIPE, SIG_IGN);
-#endif
-
-    g_sock = socket(AF_INET, SOCK_STREAM, 0);
-    if (g_sock == INVALID_SOCKET) return -1;
-
-    struct sockaddr_in srv;
-    memset(&srv, 0, sizeof(srv));
-    srv.sin_family = AF_INET;
-    srv.sin_port = htons(puerto);
-    inet_pton(AF_INET, ip, &srv.sin_addr);
-
-    if (connect(g_sock, (struct sockaddr *)&srv, sizeof(srv)) != 0) {
-#ifdef _WIN32
-        closesocket(g_sock);
-#else
-        close(g_sock);
-#endif
-        return -1;
-    }
-    return 0;
-}
-
-// Envia un mensaje al servidor
-void net_enviar(const char *msg) {
-    send(g_sock, msg, strlen(msg), 0);
-}
-
-// Recibe una linea del servidor (hasta '\n')
-void net_recibir_linea(char *buf, int tam) {
-    int i = 0;
-    while (i < tam - 1) {
-        char c;
-        if (recv(g_sock, &c, 1, 0) <= 0) break;
-        buf[i++] = c;
-        if (c == '\n') break;
-    }
-    buf[i] = '\0';
-    // Quitar el salto de linea del final
-    if (i > 0 && buf[i-1] == '\n') buf[i-1] = '\0';
-}
-
-// Envia un comando y guarda la primera linea de respuesta en buf
-void net_cmd(const char *comando, char *buf, int tam) {
-    char msg[PROTO_BUFF_SIZE];
-    snprintf(msg, sizeof(msg), "%s\n", comando);
-    net_enviar(msg);
-    net_recibir_linea(buf, tam);
-}
-
 
 void ui_limpiar(void) {
     fflush(stdout);
