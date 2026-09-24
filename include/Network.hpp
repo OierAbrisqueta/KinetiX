@@ -18,11 +18,11 @@
 #endif
 
 #ifdef _WIN32
-static SOCKET g_sock = INVALID_SOCKET;
+// static SOCKET g_sock = INVALID_SOCKET; // Movido a Network.cpp
 #else
 using SocketHandle = int;
 static const SocketHandle INVALID_SOCKET = -1;
-static SocketHandle g_sock = INVALID_SOCKET;
+// static SocketHandle g_sock = INVALID_SOCKET; // Movido a Network.cpp
 #endif
 
 // Conecta al servidor. Devuelve 0 si ok, -1 si error.
@@ -36,5 +36,7 @@ void net_recibir_linea(char *buf, int tam);
 
 // Envia un comando y guarda la primera linea de respuesta en buf
 void net_cmd(const char *comando, char *buf, int tam);
+
+void net_desconectar();
 
 #endif //KINETIX_NETWORK_HPP

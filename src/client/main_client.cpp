@@ -1,8 +1,6 @@
-#include "Estacion.hpp"
 #include "protocolo.h"
 #include "gestor_config.h"
 #include "CacheManager.hpp"
-#include <cstdio>
 #include "Network.hpp"
 #include "RentalSession.hpp"
 
@@ -29,11 +27,7 @@ int main(void) {
         net_cmd(CMD_EXIT, resp, sizeof(resp));
     }
 
-#ifdef _WIN32
-    closesocket(g_sock);
-    WSACleanup();
-#else
-    close(g_sock);
-#endif
+    net_desconectar();
+
     return 0;
 }

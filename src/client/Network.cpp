@@ -1,4 +1,11 @@
 #include "Network.hpp"
+#include <cstring>
+
+#ifdef _WIN32
+static SOCKET g_sock = INVALID_SOCKET;
+#else
+static SocketHandle g_sock = INVALID_SOCKET;
+#endif
 
 int net_conectar(const char *ip, int puerto) {
 #ifdef _WIN32
@@ -50,4 +57,13 @@ void net_cmd(const char *comando, char *buf, int tam) {
     snprintf(msg, sizeof(msg), "%s\n", comando);
     net_enviar(msg);
     net_recibir_linea(buf, tam);
+}
+
+void net_desconectar() {
+#ifdef _WIN32
+    closesocket(g_sock);
+    WSACleanup();
+#else
+    close(g_sock);
+#endif
 }
